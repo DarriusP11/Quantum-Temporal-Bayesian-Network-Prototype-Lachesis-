@@ -1,0 +1,2 @@
+timestamp,backend,depth,shots,lambda,bitstring,selected_assets,expected_return,risk,objective,energy
+2025-11-18T23:56:20.483945,classical,1,1024,1.0,110,"[""AAPL"", ""MSFT""]",0.22,0.13,0.09,-0.09

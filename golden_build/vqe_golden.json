@@ -1,0 +1,12 @@
+{
+  "updated_at": "2026-01-03T13:52:31",
+  "snapshot_path": "golden_build/vqe_snapshot_20260103_135231.json",
+  "smoke_path": "golden_build/vqe_smoke_20260103_135231.json",
+  "sweep_path": "golden_build/vqe_sweep_20260103_135142.json",
+  "promoted": false,
+  "meta": {
+    "mode": "single_run",
+    "problem": "Toy Hamiltonian (default)",
+    "num_qubits": 2
+  }
+}

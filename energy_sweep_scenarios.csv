@@ -1,0 +1,6 @@
+CHANNEL,scenario_id,renewable_pct,battery_storage_mwh,demand_growth_rate,carbon_price_usd,grid_efficiency,simulation_years
+S/D FS,base_case_2030,35,15000,1.8,45,0.88,10
+Fd,high_renewables_2040,75,42000,2.1,120,0.92,15
+FS,fossil_phaseout,20,8000,-0.5,200,0.85,8
+FC,storage_boost,55,65000,3.2,80,0.95,12
+FT,low_growth,40,12000,0.7,60,0.90,5

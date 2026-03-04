@@ -1,0 +1,12 @@
+{
+  "status": "PASS",
+  "best_energy": -0.16328450271842174,
+  "reference_energy": -0.16328450271842174,
+  "abs_delta": 0.0,
+  "thresholds": {
+    "pass_delta": 0.05,
+    "warn_delta": 0.15
+  },
+  "timestamp": "2026-01-20T10:59:44",
+  "ref_mode": "Latest snapshot in golden_build"
+}

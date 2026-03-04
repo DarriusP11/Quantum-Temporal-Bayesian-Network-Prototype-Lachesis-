@@ -1,0 +1,110 @@
+[
+  {
+    "name": "Scenario 2025-11-24 14:25:48",
+    "timestamp": "2025-11-24 14:25:59",
+    "portfolio_choice": "Toy 3-asset tech portfolio",
+    "portfolio_name": "Toy 3-asset tech portfolio",
+    "regime": "Baseline",
+    "backend": "Classical brute-force",
+    "lambda": 1.0,
+    "depth": 1,
+    "shots": 1024,
+    "bitstring": "111",
+    "selected_assets": [
+      "AAPL",
+      "MSFT",
+      "GOOG"
+    ],
+    "expected_return": 0.3,
+    "risk": 0.28300000000000003,
+    "objective": 0.3,
+    "note": "user_backend"
+  },
+  {
+    "name": "Scenario 2025-11-24 19:36:51",
+    "timestamp": "2025-11-24 19:37:37",
+    "portfolio_choice": "Lachesis benchmark (5-asset mix)",
+    "portfolio_name": "Lachesis benchmark (equities + bond + gold)",
+    "regime": "Baseline",
+    "backend": "Classical brute-force",
+    "lambda": 0.6,
+    "depth": 1,
+    "shots": 1024,
+    "bitstring": "11001",
+    "selected_assets": [
+      "AAPL",
+      "MSFT",
+      "GLD"
+    ],
+    "expected_return": 0.002810507850854542,
+    "risk": 0.001329295274287282,
+    "objective": 0.0011545866007978125,
+    "note": "user_backend"
+  },
+  {
+    "name": "Scenario 2025-11-24 19:36:51",
+    "timestamp": "2025-11-24 19:39:41",
+    "portfolio_choice": "Lachesis benchmark (5-asset mix)",
+    "portfolio_name": "Lachesis benchmark (equities + bond + gold)",
+    "regime": "Baseline",
+    "backend": "Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",
+    "lambda": 1.0,
+    "depth": 1,
+    "shots": 1024,
+    "bitstring": "11101",
+    "selected_assets": [
+      "AAPL",
+      "MSFT",
+      "QQQ",
+      "GLD"
+    ],
+    "expected_return": 0.003614941849023401,
+    "risk": 0.002550880020923415,
+    "objective": 0.003614941849023401,
+    "note": "user_backend"
+  },
+  {
+    "name": "Scenario 2025-11-24 19:58:53",
+    "timestamp": "2025-11-24 19:59:26",
+    "portfolio_choice": "Lachesis benchmark (5-asset mix)",
+    "portfolio_name": "Lachesis benchmark (equities + bond + gold)",
+    "regime": "Baseline",
+    "backend": "Classical brute-force",
+    "lambda": 0.8,
+    "depth": 1,
+    "shots": 1024,
+    "bitstring": "11101",
+    "selected_assets": [
+      "AAPL",
+      "MSFT",
+      "QQQ",
+      "GLD"
+    ],
+    "expected_return": 0.003614941849023401,
+    "risk": 0.002550880020923415,
+    "objective": 0.0023817774750340384,
+    "note": "user_backend"
+  },
+  {
+    "name": "Scenario 2025-11-24 19:58:53",
+    "timestamp": "2025-11-24 19:59:35",
+    "portfolio_choice": "Lachesis benchmark (5-asset mix)",
+    "portfolio_name": "Lachesis benchmark (equities + bond + gold)",
+    "regime": "Baseline",
+    "backend": "Classical brute-force",
+    "lambda": 0.8,
+    "depth": 1,
+    "shots": 1024,
+    "bitstring": "11101",
+    "selected_assets": [
+      "AAPL",
+      "MSFT",
+      "QQQ",
+      "GLD"
+    ],
+    "expected_return": 0.003614941849023401,
+    "risk": 0.002550880020923415,
+    "objective": 0.0023817774750340384,
+    "note": "user_backend"
+  }
+]

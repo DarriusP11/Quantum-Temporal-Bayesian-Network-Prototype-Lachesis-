@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Lachesis Backend Technical Documentation</title>
+<style>
+  body { font-family: "Helvetica", Arial, sans-serif; line-height: 1.4; color: #111; margin: 34px; }
+  h1, h2, h3, h4 { color: #1b1b1b; }
+  h1 { font-size: 27px; margin-bottom: 0.15em; }
+  h2 { font-size: 22px; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-top: 1.2em; }
+  h3 { font-size: 17px; margin-top: 1em; }
+  h4 { font-size: 14px; margin-top: 0.8em; text-transform: uppercase; letter-spacing: 0.03em; }
+  p { margin: 0.34em 0; }
+  ul { margin-top: 0.18em; margin-bottom: 0.48em; }
+  li { margin: 0.12em 0; }
+  code { background: #f3f3f3; padding: 1px 4px; border-radius: 3px; }
+  .muted { color: #555; }
+  .box { border: 1px solid #ddd; padding: 10px 12px; margin: 10px 0; background: #fafafa; }
+  .small { font-size: 12px; }
+</style>
+</head>
+<body>
+
+<h1>Lachesis Backend Technical Documentation</h1>
+<p class="muted">Generated from current backend code in <code>qtbn_simulator_clean.py</code>, <code>Qtbn_UI.py</code>, <code>qaoa_scenario1.py</code>, <code>vqe_tab.py</code>, <code>qtbn_core.py</code>, and <code>foresight.py</code>.</p>
+
+<h2>1) App Overview (same framing as prior doc)</h2>
+<p>Lachesis is a single-process Streamlit application that combines quantum simulation, market risk analytics, scenario modeling, and AI-assisted explanation. The app behaves like an integrated research platform rather than a classic microservice backend. Most "backend" logic is implemented as Python service functions inside Streamlit modules and executed in-process on user interaction.</p>
+
+<div class="box">
+  <h4>What the app is, technically</h4>
+  <ul>
+    <li>A stateful Python analytics engine using <code>st.session_state</code> as its runtime state store.</li>
+    <li>A computation stack that spans quantum simulation (Qiskit/Aer), Monte Carlo risk modeling, optimization (CVXPY), and NLP/LLM integrations.</li>
+    <li>A role-gated secret/key-resolution system with owner-only key entry and server-managed fallback secrets/env.</li>
+    <li>A file-backed artifact system for snapshots, run logs, calibration history, scenarios, and governance outputs.</li>
+  </ul>
+</div>
+
+<div class="box">
+  <h4>What that means in plain terms</h4>
+  <p>The app is one smart control center. It does heavy calculations, remembers your session settings, pulls external data, and can explain results in plain English, all from one dashboard.</p>
+</div>
+
+<h2>2) Backend Topology</h2>
+
+<h3>2.1 Execution model</h3>
+<ul>
+  <li>Runtime model is event-driven Streamlit reruns. Each widget interaction triggers a script rerun against current <code>st.session_state</code>.</li>
+  <li>No standalone API server process is defined in this codebase; backend routines are local function calls.</li>
+  <li>Caching is used selectively via <code>@st.cache_data</code> (e.g., market fetch, returns preprocessing) and <code>functools.lru_cache</code> (simulator/transpile/count pipelines).</li>
+</ul>
+
+<h3>2.2 Module map</h3>
+<ul>
+  <li><code>qtbn_simulator_clean.py</code>: primary orchestration module and majority of backend computations.</li>
+  <li><code>Qtbn_UI.py</code>: auth gate, owner detection, key resolution, voice synthesis utilities, theme and auth UI wrappers.</li>
+  <li><code>qaoa_scenario1.py</code>: QAOA mini-lab engine, scenario persistence, snapshot export into the broader pipeline.</li>
+  <li><code>vqe_tab.py</code>: VQE mini-lab, smoke checks, risk budget mapping, trade gate enforcement wrapper and audit trail.</li>
+  <li><code>qtbn_core.py</code>: standalone minimal QTBN engine abstraction (regime transition forward model).</li>
+  <li><code>foresight.py</code>: lightweight foresight helpers for count aggregation, KL divergence, and blending.</li>
+</ul>
+
+<h3>2.3 Data planes</h3>
+<ul>
+  <li>In-memory/session plane: <code>st.session_state</code> keys for all active controls, model state, and transient artifacts.</li>
+  <li>Disk plane: JSON/CSV/TOML files for scenario and model artifacts.</li>
+  <li>Network plane: external providers (OpenAI, Perplexity, yfinance, FRED, SEC EDGAR, Supabase).</li>
+</ul>
+
+<h2>3) Security and Identity Backend</h2>
+
+<h3>3.1 Authentication pipeline</h3>
+<h4>Technical</h4>
+<ul>
+  <li><code>render_auth_gate()</code> in <code>Qtbn_UI.py</code> is the authentication gatekeeper.</li>
+  <li>Primary auth path: Supabase via URL + anon key loaded from env/secrets.</li>
+  <li>Failover path: local <code>auth_users.json</code> credential store with per-user salt and SHA-256 digest.</li>
+  <li>Canonical identity state:
+    <ul>
+      <li><code>auth_ok</code></li>
+      <li><code>auth_source</code></li>
+      <li><code>auth_email_normalized</code> (trim + lowercase)</li>
+      <li><code>auth_is_owner</code> (true only if email equals <code>darriusperson@gmail.com</code>)</li>
+    </ul>
+  </li>
+</ul>
+
+<h4>Layman</h4>
+<p>The app first tries cloud login. If that fails, it can still log in locally. It standardizes your email and marks the owner account automatically.</p>
+
+<h3>3.2 API key resolution and owner-only controls</h3>
+<h4>Technical</h4>
+<ul>
+  <li>Central resolver: <code>resolve_api_key(service)</code>.</li>
+  <li>Resolver precedence:
+    <ol>
+      <li>Owner session override (Admin input field)</li>
+      <li><code>st.secrets</code></li>
+      <li>Project-local <code>.streamlit/secrets.toml</code> parse fallback</li>
+      <li>Environment variable</li>
+      <li>Empty key</li>
+    </ol>
+  </li>
+  <li>Owner session cleanup on logout via <code>clear_auth_session()</code> and <code>clear_session_api_key_overrides()</code>.</li>
+  <li>Service map includes OpenAI, FRED, Perplexity, OpenAI-voice, ElevenLabs-voice.</li>
+</ul>
+
+<h4>Layman</h4>
+<p>Only the owner can type keys into the app. Other users can still use features when backend keys are configured, but keys are hidden.</p>
+
+<h2>4) Configuration, State, and Persistence</h2>
+
+<h3>4.1 Session-state contract</h3>
+<h4>Technical</h4>
+<ul>
+  <li><code>ss_get()</code> auto-initializes missing keys with defaults.</li>
+  <li><code>ss_set()</code> writes values directly.</li>
+  <li>Large default state bootstrapping includes quantum controls, finance controls, LLM mode, sentiment settings, and plugin stores.</li>
+  <li>Financial-tab specific controls are synchronized back to sidebar defaults via <code>_sync_financial_sidebar_state()</code>.</li>
+</ul>
+
+<h4>Layman</h4>
+<p>The app keeps a large in-memory settings object so every tab shares one consistent state.</p>
+
+<h3>4.2 Persistent settings</h3>
+<h4>Technical</h4>
+<ul>
+  <li>Stored in <code>.qtbn.toml</code> via <code>save_persistent_settings()</code>.</li>
+  <li>Loaded by <code>load_persistent_settings()</code>.</li>
+  <li>Any setting key ending with <code>_api_key</code> is ignored during load and excluded from save list, preventing key persistence in this file.</li>
+</ul>
+
+<h4>Layman</h4>
+<p>Your app preferences are saved, but sensitive keys are intentionally not written there.</p>
+
+<h3>4.3 Artifact files and logs</h3>
+<ul>
+  <li><code>qaoa_snapshot.json</code> - latest exported QAOA stance for downstream tabs.</li>
+  <li><code>qaoa_runs_log.csv</code> - logged QAOA run history.</li>
+  <li><code>qaoa_scenarios.json</code> - saved QAOA named scenarios.</li>
+  <li><code>scenarios.json</code> - scenario repository hooks for foresight.</li>
+  <li><code>golden_build/*.json</code> - VQE snapshots, smoke checks, fixtures, trade audits, bridge artifacts.</li>
+  <li><code>auth_users.json</code> - local auth failover records.</li>
+</ul>
+
+<h2>5) Dependency Management and Runtime Guardrails</h2>
+
+<h3>5.1 Optional vs hard dependencies</h3>
+<h4>Technical</h4>
+<ul>
+  <li>Hard dependency: Qiskit core/Aer. If missing, app stops with installation instructions.</li>
+  <li>Optional dependencies degrade gracefully:
+    <ul>
+      <li><code>yfinance</code>, <code>fredapi</code>, <code>openai</code>, <code>cvxpy</code>, <code>reportlab</code>, <code>toml</code>, <code>feedparser</code>, <code>nltk</code>, <code>plotly</code>.</li>
+    </ul>
+  </li>
+  <li>QAE components imported with new/legacy shim logic and tracked in <code>_QAE_ERRORS</code>.</li>
+  <li>Runtime diagnostics expander reports environment versions and unavailable features.</li>
+</ul>
+
+<h4>Layman</h4>
+<p>If some advanced libraries are missing, the app still runs and shows fallback behavior instead of crashing.</p>
+
+<h3>5.2 Browser compatibility patch</h3>
+<h4>Technical</h4>
+<ul>
+  <li>Startup includes Safari-specific Streamlit static asset patching and cache-busting for UI compatibility.</li>
+  <li>This is backend-adjacent operational hardening, not core analytics logic.</li>
+</ul>
+
+<h2>6) Quantum Backend Engine</h2>
+
+<h3>6.1 Circuit assembly</h3>
+<h4>Technical</h4>
+<ul>
+  <li>Core builders:
+    <ul>
+      <li><code>build_unitary_circuit_1q()</code></li>
+      <li><code>build_unitary_circuit()</code> for 1-4 qubits over T0/T1/T2 gate schedule</li>
+      <li><code>build_measure_circuit_with_noise()</code> for measured execution</li>
+    </ul>
+  </li>
+  <li><code>apply_gate()</code> supports H/X/Y/Z/RX/RY/RZ/S/T with angle scaling in pi units.</li>
+  <li>Conditional CNOT insertions per step and qubit topology (0-1, 1-2, 2-3).</li>
+</ul>
+
+<h4>Layman</h4>
+<p>The backend converts sidebar gate choices into actual quantum circuits that can be run or measured.</p>
+
+<h3>6.2 Noise model backend</h3>
+<h4>Technical</h4>
+<ul>
+  <li><code>get_simulator()</code> builds AerSimulator with optional <code>NoiseModel</code>.</li>
+  <li>Noise channels:
+    <ul>
+      <li>Single-qubit depolarizing</li>
+      <li>Amplitude damping</li>
+      <li>Phase damping</li>
+      <li>Two-qubit depolarizing for CX</li>
+    </ul>
+  </li>
+  <li>Noise parameters can be user-entered or replaced by calibration snapshot values when <code>use_calibrated_noise</code> is true.</li>
+</ul>
+
+<h4>Layman</h4>
+<p>The simulator can mimic real hardware imperfections so results are more realistic.</p>
+
+<h3>6.3 Quantum compute caching</h3>
+<h4>Technical</h4>
+<ul>
+  <li>QCs registered by hash key via <code>_qc_key()</code> and <code>QC_REGISTRY</code>.</li>
+  <li>Transpilation cached in <code>cached_transpile()</code>.</li>
+  <li>Counts execution cached in <code>run_counts_cached()</code> with hashable inputs.</li>
+</ul>
+
+<h4>Layman</h4>
+<p>The app reuses expensive quantum compilation/execution work so repeated runs are faster.</p>
+
+<h2>7) Calibration and Quantum Diagnostics Backend</h2>
+
+<h3>7.1 Tomography and process diagnostics</h3>
+<h4>Technical</h4>
+<ul>
+  <li><code>state_tomography_1q()</code>: basis-rotated measurements estimate Bloch components (X, Y, Z).</li>
+  <li><code>process_fidelity_basic()</code>: compares ideal vs noisy outputs over basis states and averages fidelity.</li>
+  <li><code>process_tomography_proxy_1q()</code>: maps prepared axis states through circuit and computes output Bloch vectors.</li>
+  <li><code>quantum_volume_proxy()</code>: educational proxy using <code>2**min(width, depth)</code>.</li>
+</ul>
+
+<h4>Layman</h4>
+<p>These are health tests for quantum circuits: how accurate they are and how they transform states.</p>
+
+<h3>7.2 Auto and Bayesian calibration</h3>
+<h4>Technical</h4>
+<ul>
+  <li><code>auto_calibrate_noise()</code>: heuristic estimates for depolarizing/amplitude/phase rates from simple tomography signatures.</li>
+  <li><code>bayesian_calibrate_noise()</code>:
+    <ul>
+      <li>Runs channel experiments</li>
+      <li>Updates Beta priors to posteriors per channel</li>
+      <li>Returns mean + credible intervals via <code>_beta_ci()</code></li>
+    </ul>
+  </li>
+  <li>Randomized benchmarking <code>randomized_benchmarking_1q()</code> fits survival curve model <code>A * p^m + B</code> and computes EPG approximation.</li>
+  <li>Calibration snapshots retained in-session (bounded list).</li>
+</ul>
+
+<h4>Layman</h4>
+<p>The app can estimate how noisy your virtual quantum hardware is, with both quick and statistically richer methods.</p>
+
+<h2>8) Market Data and Macro Backend</h2>
+
+<h3>8.1 Market data ingestion</h3>
+<h4>Technical</h4>
+<ul>
+  <li><code>fetch_market_data()</code>:
+    <ul>
+      <li>In demo mode: synthetic price generator</li>
+      <li>Otherwise: yfinance download path</li>
+      <li>If remote fetch fails: fallback to synthetic series</li>
+    </ul>
+  </li>
+  <li>Input contract: CSV ticker string + lookback days.</li>
+  <li>Output contract: normalized DataFrame (single or multi-index columns).</li>
+</ul>
+
+<h4>Layman</h4>
+<p>If real market data is unavailable, the app generates realistic fake data so analysis can continue.</p>
+
+<h3>8.2 Macro data ingestion and fallback</h3>
+<h4>Technical</h4>
+<ul>
+  <li><code>fetch_fred_bundle(api_key)</code> returns CPI/Unemployment/10Y yield.</li>
+  <li>Returns <code>None</code> if no key, no dependency, or fetch failure.</li>
+  <li><code>simulate_macro_bundle()</code> synthesizes macro values from observed return volatility regime.</li>
+  <li><code>macro_stress_multiplier()</code> computes clipped stress factor:
+    <ul>
+      <li><code>stress = 1 + 0.40*((u-4)/4) + 0.20*((y10-4)/4)</code></li>
+      <li>Clipped to [0.8, 1.8]</li>
+    </ul>
+  </li>
+</ul>
+
+<h4>Layman</h4>
+<p>The app uses economic indicators when possible, but can estimate macro stress from market behavior if those indicators are unavailable.</p>
+
+<h2>9) Risk Engine Backend (VaR/CVaR and metrics)</h2>
+
+<h3>9.1 Return preprocessing</h3>
+<ul>
+  <li><code>log_return_frame()</code> computes log returns from Adj Close/Close and drops invalid rows.</li>
+  <li>Handles both single-index and multi-index market data frames.</li>
+</ul>
+
+<h3>9.2 VaR/CVaR engine</h3>
+<h4>Technical</h4>
+<ul>
+  <li>Primary function: <code>monte_carlo_var_cvar(data, horizon_days, sims, alpha)</code>.</li>
+  <li>Classical branch:
+    <ul>
+      <li>Basket returns = equal-weight mean of asset return series</li>
+      <li>Generates normal draws in chunks for memory control</li>
+      <li>Aggregates horizon-day sums</li>
+      <li>VaR = percentile((1-alpha)*100), CVaR = conditional mean of tail draws</li>
+    </ul>
+  </li>
+  <li>QAE branch (optional, guarded by availability + toggle):
+    <ul>
+      <li>Builds NormalDistribution circuit over horizon returns</li>
+      <li>Runs Iterative Amplitude Estimation as tail-probability proxy</li>
+      <li>Still reports VaR/CVaR using normal-analytic expressions for consistency</li>
+    </ul>
+  </li>
+  <li>Failure behavior: logs exception, returns NaN-safe outputs.</li>
+</ul>
+
+<h4>Layman</h4>
+<p>The backend estimates potential losses by simulating many future scenarios, and can optionally use quantum estimation tools for tail-probability proxying.</p>
+
+<h3>9.3 Regime detection and advanced risk metrics</h3>
+<h4>Technical</h4>
+<ul>
+  <li><code>detect_regime()</code> computes 21-day rolling vol annualized and bins into Low/Medium/High volatility.</li>
+  <li>Advanced metrics include Sharpe, Sortino, max drawdown, historical VaR, expected shortfall, skewness, kurtosis.</li>
+  <li>Charting backend in <code>create_comprehensive_financial_charts()</code> provides candlestick/price trends, return distribution with normal fit, rolling vol, and correlation matrix.</li>
+</ul>
+
+<h4>Layman</h4>
+<p>The app classifies the current market mood and computes standard institutional risk/quality indicators.</p>
+
+<h2>10) Portfolio Optimization and Backtesting Backend</h2>
+
+<h3>10.1 Regime-aware optimizer</h3>
+<h4>Technical</h4>
+<ul>
+  <li><code>regime_aware_portfolio_optimizer()</code> uses CVXPY for constrained optimization.</li>
+  <li>Supports:
+    <ul>
+      <li>Objective modes: CVaR or variance-style risk objective</li>
+      <li>Long-only and per-asset max-weight constraints</li>
+      <li>Turnover penalty vs previous weights</li>
+      <li>Sector-cap constraints</li>
+      <li>Regime-conditional covariance via kmeans clustering</li>
+      <li>Optional Black-Litterman style views adjustment</li>
+    </ul>
+  </li>
+  <li>CVaR objective uses auxiliary variables and alpha-tail constraints over scenario set.</li>
+  <li>Optimization fallback returns equal weights on solver failure.</li>
+</ul>
+
+<h4>Layman</h4>
+<p>This engine chooses portfolio weights while balancing expected return, risk limits, turnover, and diversification constraints.</p>
+
+<h3>10.2 Efficient frontier, stress testing, and backtesting</h3>
+<ul>
+  <li><code>plot_efficient_frontier()</code>: sweeps target return and solves minimum variance portfolios.</li>
+  <li><code>stress_test_portfolio()</code>: compares base vs stressed VaR/CVaR under stress factor scaling.</li>
+  <li><code>backtest_rebalance()</code>: monthly rebalance simulation with transaction costs, rolling VaR, and drawdown tracking.</li>
+</ul>
+
+<h2>11) Sentiment Backend</h2>
+
+<h3>11.1 RSS + VADER path</h3>
+<h4>Technical</h4>
+<ul>
+  <li><code>analyze_sentiment()</code> pulls Google News RSS for each ticker (up to 10 entries/ticker).</li>
+  <li>Scores each headline with VADER compound sentiment.</li>
+  <li>Risk multiplier formula:
+    <ul>
+      <li><code>multiplier = 1 - 0.5 * avg_score</code></li>
+      <li>Clipped to [0.5, 1.5]</li>
+    </ul>
+  </li>
+  <li>Returns structured payload with titles, links, scores, and provider metadata.</li>
+</ul>
+
+<h4>Layman</h4>
+<p>The backend turns news tone into a number that raises or lowers risk sensitivity.</p>
+
+<h3>11.2 Perplexity path</h3>
+<h4>Technical</h4>
+<ul>
+  <li><code>analyze_sentiment_perplexity()</code> sends a strict JSON-only prompt to Perplexity chat completions endpoint.</li>
+  <li>Parses content robustly from multiple response formats and extracts JSON object.</li>
+  <li>Validates and clamps <code>avg_score</code>, per-item scores, and multiplier range.</li>
+  <li>Returns same schema as RSS path for backend interchangeability.</li>
+</ul>
+
+<h4>Layman</h4>
+<p>This path asks a web-aware AI to summarize market sentiment in one structured result format.</p>
+
+<h2>12) LLM and Voice Orchestration Backend</h2>
+
+<h3>12.1 OpenAI chat orchestration</h3>
+<h4>Technical</h4>
+<ul>
+  <li><code>_studio_run_openai_chat()</code> supports both OpenAI SDK v1 and legacy call patterns.</li>
+  <li>If SDK unavailable or key missing, returns deterministic offline stub response.</li>
+  <li>Template-based prompt studio uses:
+    <ul>
+      <li><code>_safe_render_template()</code> for placeholder substitution without hard failure</li>
+      <li><code>_studio_collect_context_from_app()</code> for session-state variable mapping</li>
+      <li>JSON import/export helpers for prompt template stores</li>
+    </ul>
+  </li>
+</ul>
+
+<h4>Layman</h4>
+<p>The app can run AI explanations with dynamic context, and still produce fallback responses if AI services are unavailable.</p>
+
+<h3>12.2 Voice synthesis backend</h3>
+<h4>Technical</h4>
+<ul>
+  <li><code>synthesize_lachesis_audio()</code> supports provider switch:
+    <ul>
+      <li>OpenAI TTS endpoint <code>/v1/audio/speech</code></li>
+      <li>ElevenLabs TTS endpoint <code>/v1/text-to-speech/{voice_id}</code></li>
+    </ul>
+  </li>
+  <li>Provider keys are resolved through same secure resolver chain.</li>
+  <li>Returns <code>(audio_bytes, error)</code> tuple for controlled UI handling.</li>
+</ul>
+
+<h4>Layman</h4>
+<p>If configured, Lachesis can speak generated answers using OpenAI or ElevenLabs.</p>
+
+<h2>13) Foresight Backend</h2>
+
+<h3>13.1 Baseline and gate evaluation</h3>
+<h4>Technical</h4>
+<ul>
+  <li>Foresight state is initialized in namespaced keys (<code>fx_*</code>).</li>
+  <li>Baseline fallback model <code>_compute_baseline_fallback()</code> produces:
+    <ul>
+      <li><code>mean_p</code> probability map</li>
+      <li><code>avg_std</code> stability proxy</li>
+      <li><code>uncertainty_penalty</code></li>
+    </ul>
+  </li>
+  <li><code>_gate_eval()</code> applies threshold rules to output PASS/WARN/FAIL core status.</li>
+  <li>Blessing comparison computes TV and KL divergence to a blessed fixture distribution.</li>
+  <li>Merged build status combines Core Gate + Blessing + VQE smoke via rank merge function.</li>
+</ul>
+
+<h4>Layman</h4>
+<p>The backend checks whether today's probabilistic profile is stable and close enough to trusted reference snapshots.</p>
+
+<h3>13.2 Scenario ranking, sweeps, and fixtures</h3>
+<h4>Technical</h4>
+<ul>
+  <li>Scenario ranking uses KL + TV metrics against active scenario set.</li>
+  <li>Sweep manager runs toy what-if perturbations and stores per-run data/metadata in session.</li>
+  <li>Fixtures payload includes baseline/gate/blessing/build/vqe/sweeps/toy-forecast and supports JSON download + disk write.</li>
+  <li>Repo scenario load/save buttons are currently placeholders for wired persistence hooks.</li>
+</ul>
+
+<h4>Layman</h4>
+<p>The system can compare possible futures, score how close they are, and save those analyses for later review.</p>
+
+<h2>14) QAOA Backend (portfolio stance engine)</h2>
+
+<h3>14.1 Optimization model</h3>
+<h4>Technical</h4>
+<ul>
+  <li>Core objective in <code>run_qaoa_portfolio()</code>:
+    <ul>
+      <li><code>J(x) = lambda * expected_return - (1 - lambda) * risk</code></li>
+      <li><code>energy = -J(x)</code></li>
+      <li>Binary inclusion vector <code>x</code> over asset universe</li>
+    </ul>
+  </li>
+  <li>Classical brute-force path enumerates all bitstrings and selects argmax objective.</li>
+  <li>Qiskit path converts objective into QUBO and uses <code>MinimumEigenOptimizer</code> with QAOA/Sampler where available.</li>
+  <li>Multiple fallback layers route back to classical solver for robustness.</li>
+</ul>
+
+<h4>Layman</h4>
+<p>QAOA backend picks which assets to include by balancing return and risk through a tunable risk-aversion dial.</p>
+
+<h3>14.2 Logging, scenarios, and stance export</h3>
+<ul>
+  <li>Every run can be logged to CSV with backend type, lambda, bitstring, risk-return stats, and metadata.</li>
+  <li>Saved scenarios persist in JSON and support comparison workflows.</li>
+  <li><code>export_qaoa_snapshot()</code> writes a compact stance snapshot used by Foresight and Financial tabs.</li>
+  <li>Snapshot loader can upgrade legacy snapshots by recomputing missing expected return/risk/objective and crash metrics.</li>
+</ul>
+
+<h2>15) VQE Backend (optimization + governance gate)</h2>
+
+<h3>15.1 VQE compute pipeline</h3>
+<h4>Technical</h4>
+<ul>
+  <li>Supports problem families: toy Hamiltonian, custom Pauli, MaxCut graph, Ising.</li>
+  <li>Attempts real VQE run first (<code>_try_run_real_vqe()</code>), then toy fallback energy path on failure.</li>
+  <li>Transforms energy into risk-budget multiplier (<code>_energy_to_risk_multiplier</code>) in [0.5, 1.5] range for downstream policy control.</li>
+  <li>Smoke evaluation compares run energy to reference source and assigns PASS/WARN/FAIL.</li>
+</ul>
+
+<h4>Layman</h4>
+<p>VQE backend computes an optimization signal and converts it into "how strict should trading limits be".</p>
+
+<h3>15.2 Step 8.8 risk gate utilities</h3>
+<h4>Technical</h4>
+<ul>
+  <li><code>build_scaled_risk_limits()</code>: scales configured limit fields by multiplier.</li>
+  <li><code>apply_risk_gates()</code> decision semantics:
+    <ul>
+      <li>REJECTED for VaR/CVaR/leverage breaches</li>
+      <li>CLAMPED for over-notional orders</li>
+      <li>APPROVED otherwise</li>
+    </ul>
+  </li>
+  <li><code>enforce_risk_gate_and_execute()</code> is a choke-point wrapper that only executes on APPROVED/CLAMPED.</li>
+</ul>
+
+<h4>Layman</h4>
+<p>This layer is a strict gatekeeper that can block or shrink risky orders before execution.</p>
+
+<h3>15.3 Step 8.9 execution wiring and audit</h3>
+<h4>Technical</h4>
+<ul>
+  <li><code>estimate_order_risk()</code> placeholder computes proxy VaR/CVaR/leverage from notional + volatility + equity.</li>
+  <li><code>enforce_smoke_policy_and_execute()</code> adds smoke-status policy modes:
+    <ul>
+      <li>Off: ignore smoke</li>
+      <li>Moderate: WARN tightens request, FAIL blocks/clamps by policy</li>
+      <li>Strict: WARN treated as FAIL</li>
+    </ul>
+  </li>
+  <li><code>submit_order_through_vqe_gate()</code> orchestrates estimate -> policy -> gate -> execute -> audit pipeline.</li>
+  <li>Audit records are appended to bounded in-memory log and optionally persisted to JSON files.</li>
+</ul>
+
+<h4>Layman</h4>
+<p>Before any trade, backend runs risk checks, applies confidence policy, then logs exactly what happened for traceability.</p>
+
+<h2>16) Error Handling and Fallback Design</h2>
+<ul>
+  <li>Most external integrations are wrapped with try/except and return typed fallback payloads.</li>
+  <li>Backend prefers continuity of analysis over hard failure.</li>
+  <li>Fallback examples:
+    <ul>
+      <li>Supabase -> local auth</li>
+      <li>FRED -> simulated macro</li>
+      <li>yfinance -> synthetic prices</li>
+      <li>OpenAI absent -> local/explanatory stubs</li>
+      <li>real VQE failure -> toy fallback with artifacts preserved</li>
+    </ul>
+  </li>
+</ul>
+
+<h2>17) Observability and Operational Notes</h2>
+<ul>
+  <li>Global logger with informational and error logs across major backend functions.</li>
+  <li>Runtime diagnostics panel surfaces environment versions and missing dependencies.</li>
+  <li>Artifact persistence in <code>golden_build</code> creates operational trail for model quality and trade-gate state.</li>
+  <li>Risk/history logs are bounded in session to avoid unbounded memory growth.</li>
+</ul>
+
+<h2>18) Backend Constraints and Engineering Risks</h2>
+<ul>
+  <li>Single-process Streamlit architecture limits horizontal scalability and strict API-style separation.</li>
+  <li>Session-state coupling can make deterministic reproducibility sensitive to UI interaction order.</li>
+  <li>Some duplicate helper definitions and large monolithic file sections increase maintenance complexity.</li>
+  <li>Trade risk estimator in Step 8.9 is intentionally placeholder and should be replaced with production VaR/CVaR estimators.</li>
+  <li>Several analytics are toy/prototype approximations by design (explicitly labeled in UI and code).</li>
+</ul>
+
+<h2>19) Layman Breakdown by Backend Layer</h2>
+
+<h3>19.1 Identity and keys</h3>
+<p>The system knows who is signed in, and only the owner can directly type API keys. Everyone else uses hidden backend keys when available.</p>
+
+<h3>19.2 Computation engine</h3>
+<p>The backend runs quantum simulations, market-risk math, and scenario calculations behind the scenes when you click controls.</p>
+
+<h3>19.3 Data sources</h3>
+<p>It pulls stock, macro, news, and filing data from outside services, and if those fail, it switches to safe fallback data so the app still works.</p>
+
+<h3>19.4 Decision controls</h3>
+<p>QAOA and VQE produce "stance" and "risk strictness" signals. Those signals can tighten or block risky actions.</p>
+
+<h3>19.5 Explanations and voice</h3>
+<p>Lachesis can explain results in human terms and optionally speak them, but still falls back gracefully if voice/LLM providers are unavailable.</p>
+
+<h3>19.6 Audit and history</h3>
+<p>The backend saves important snapshots and logs so decisions can be reviewed later, which is useful for trust and governance.</p>
+
+<h2>20) Suggested Backend Hardening Next Steps</h2>
+<ol>
+  <li>Extract monolithic orchestration into service modules (auth, data, risk, quantum, llm, governance).</li>
+  <li>Add typed schemas (pydantic/dataclasses) for key payloads (risk snapshot, qaoa/vqe artifacts, sentiment response).</li>
+  <li>Replace placeholder order-risk estimator with production-grade portfolio-aware VaR/CVaR service.</li>
+  <li>Add unit and integration tests for resolver precedence, fallback behavior, and gate decision matrices.</li>
+  <li>Introduce explicit backend API layer if multi-user concurrency and deployment scale are priorities.</li>
+</ol>
+
+<p class="small muted">End of backend technical document.</p>
+
+</body>
+</html>

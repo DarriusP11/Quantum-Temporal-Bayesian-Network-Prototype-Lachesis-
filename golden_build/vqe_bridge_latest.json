@@ -1,0 +1,112 @@
+{
+  "timestamp": "2026-01-03T14:39:57",
+  "applied": true,
+  "risk_budget_multiplier": 1.0809243295876214,
+  "energy": -0.16328450271842174,
+  "smoke": {
+    "status": "PASS",
+    "best_energy": -0.16328450271842174,
+    "reference_energy": -0.16328450271842174,
+    "abs_delta": 0.0,
+    "thresholds": {
+      "pass_delta": 0.05,
+      "warn_delta": 0.15
+    },
+    "timestamp": "2026-01-03T14:39:47",
+    "ref_mode": "Latest snapshot in golden_build"
+  },
+  "vqe_risk_signal": {
+    "timestamp": "2026-01-03T14:39:47",
+    "model": "TOY",
+    "energy": -0.16328450271842174,
+    "risk_budget_multiplier": 1.0809243295876214,
+    "notes": "Toy fallback energy (Qiskit VQE deps missing or failed).",
+    "meta": {
+      "seed": 42,
+      "generator": "toy(normal + fake descent)",
+      "env": {
+        "python": "3.9.6",
+        "platform": "macOS-13.0-arm64-arm-64bit",
+        "machine": "arm64",
+        "processor": "arm",
+        "numpy": "1.26.4",
+        "streamlit": "1.50.0",
+        "qiskit": "2.2.2",
+        "qiskit_aer": "0.17.2",
+        "qiskit_algorithms": "0.4.0"
+      },
+      "real_vqe_attempted": true,
+      "real_vqe_notes": "Estimator unavailable: cannot import name 'Estimator' from 'qiskit.primitives' (/Users/darriusperson/Library/Python/3.9/lib/python/site-packages/qiskit/primitives/__init__.py)",
+      "requested": {
+        "num_qubits": 2,
+        "ansatz": "TwoLocal",
+        "reps": 2,
+        "optimizer": "COBYLA",
+        "maxiter": 80,
+        "backend_choice": "Estimator (default)",
+        "problem": "Toy Hamiltonian (default)",
+        "problem_meta": {
+          "problem": "Toy",
+          "pauli_list": [
+            [
+              "ZZ",
+              1.0
+            ],
+            [
+              "XI",
+              0.2
+            ],
+            [
+              "IX",
+              0.2
+            ]
+          ]
+        }
+      }
+    },
+    "interpretation": {}
+  },
+  "snapshot_meta": {
+    "seed": 42,
+    "generator": "toy(normal + fake descent)",
+    "env": {
+      "python": "3.9.6",
+      "platform": "macOS-13.0-arm64-arm-64bit",
+      "machine": "arm64",
+      "processor": "arm",
+      "numpy": "1.26.4",
+      "streamlit": "1.50.0",
+      "qiskit": "2.2.2",
+      "qiskit_aer": "0.17.2",
+      "qiskit_algorithms": "0.4.0"
+    },
+    "real_vqe_attempted": true,
+    "real_vqe_notes": "Estimator unavailable: cannot import name 'Estimator' from 'qiskit.primitives' (/Users/darriusperson/Library/Python/3.9/lib/python/site-packages/qiskit/primitives/__init__.py)",
+    "requested": {
+      "num_qubits": 2,
+      "ansatz": "TwoLocal",
+      "reps": 2,
+      "optimizer": "COBYLA",
+      "maxiter": 80,
+      "backend_choice": "Estimator (default)",
+      "problem": "Toy Hamiltonian (default)",
+      "problem_meta": {
+        "problem": "Toy",
+        "pauli_list": [
+          [
+            "ZZ",
+            1.0
+          ],
+          [
+            "XI",
+            0.2
+          ],
+          [
+            "IX",
+            0.2
+          ]
+        ]
+      }
+    }
+  }
+}

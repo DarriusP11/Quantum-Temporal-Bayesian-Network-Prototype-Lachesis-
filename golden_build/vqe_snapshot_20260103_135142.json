@@ -1,0 +1,183 @@
+{
+  "timestamp": "2026-01-03T13:51:42",
+  "model": "TOY",
+  "energy": -0.13979243080093262,
+  "risk_budget_multiplier": 1.0694444442930973,
+  "notes": "Toy fallback energy (Qiskit VQE deps missing or failed).",
+  "meta": {
+    "seed": 33,
+    "generator": "toy(normal + fake descent)",
+    "real_vqe_attempted": true,
+    "real_vqe_notes": "Estimator unavailable: cannot import name 'Estimator' from 'qiskit.primitives' (/Users/darriusperson/Library/Python/3.9/lib/python/site-packages/qiskit/primitives/__init__.py)",
+    "requested": {
+      "num_qubits": 2,
+      "ansatz": "TwoLocal",
+      "reps": 1,
+      "optimizer": "COBYLA",
+      "maxiter": 60,
+      "backend_choice": "Estimator (default)",
+      "problem": "Toy Hamiltonian (default)",
+      "problem_meta": {
+        "problem": "Toy",
+        "pauli_list": [
+          [
+            "ZZ",
+            1.0
+          ],
+          [
+            "XI",
+            0.2
+          ],
+          [
+            "IX",
+            0.2
+          ]
+        ]
+      }
+    }
+  },
+  "history": [
+    {
+      "t": 0,
+      "energy": 0.7432307437106054
+    },
+    {
+      "t": 1,
+      "energy": 0.7191190931480897
+    },
+    {
+      "t": 2,
+      "energy": 0.6895402741775143
+    },
+    {
+      "t": 3,
+      "energy": 0.6438312689844436
+    },
+    {
+      "t": 4,
+      "energy": 0.6238478164837739
+    },
+    {
+      "t": 5,
+      "energy": 0.5928690546092419
+    },
+    {
+      "t": 6,
+      "energy": 0.5690670766653586
+    },
+    {
+      "t": 7,
+      "energy": 0.5574353981772183
+    },
+    {
+      "t": 8,
+      "energy": 0.5301196978951283
+    },
+    {
+      "t": 9,
+      "energy": 0.48937501112999066
+    },
+    {
+      "t": 10,
+      "energy": 0.4525652214408525
+    },
+    {
+      "t": 11,
+      "energy": 0.4327334842275149
+    },
+    {
+      "t": 12,
+      "energy": 0.38816580178057325
+    },
+    {
+      "t": 13,
+      "energy": 0.36080169452218525
+    },
+    {
+      "t": 14,
+      "energy": 0.33455433951739927
+    },
+    {
+      "t": 15,
+      "energy": 0.29305129556125165
+    },
+    {
+      "t": 16,
+      "energy": 0.26474393467279833
+    },
+    {
+      "t": 17,
+      "energy": 0.2403061565786001
+    },
+    {
+      "t": 18,
+      "energy": 0.20257825291548753
+    },
+    {
+      "t": 19,
+      "energy": 0.16777336264050638
+    },
+    {
+      "t": 20,
+      "energy": 0.14321110791826122
+    },
+    {
+      "t": 21,
+      "energy": 0.10022214028495696
+    },
+    {
+      "t": 22,
+      "energy": 0.061420594554530014
+    },
+    {
+      "t": 23,
+      "energy": 0.04095929170358893
+    },
+    {
+      "t": 24,
+      "energy": 0.011815526967665304
+    },
+    {
+      "t": 25,
+      "energy": -0.03234607967657105
+    },
+    {
+      "t": 26,
+      "energy": -0.06223232176743482
+    },
+    {
+      "t": 27,
+      "energy": -0.0728199771040401
+    },
+    {
+      "t": 28,
+      "energy": -0.11795154217457017
+    },
+    {
+      "t": 29,
+      "energy": -0.13979243080093262
+    }
+  ],
+  "smoke": {
+    "status": "PASS",
+    "best_energy": -0.13979243080093262,
+    "reference_energy": -0.16328450271842174,
+    "abs_delta": 0.023492071917489116,
+    "thresholds": {
+      "pass_delta": 0.05,
+      "warn_delta": 0.15
+    },
+    "timestamp": "2026-01-03T13:51:42",
+    "ref_mode": "Promote(best sweep)"
+  },
+  "interpretation": {},
+  "promoted_from_sweep": true,
+  "promoted_config": {
+    "ansatz": "TwoLocal",
+    "optimizer": "COBYLA",
+    "backend_choice": "Estimator (default)",
+    "reps": 1,
+    "maxiter": 60,
+    "seed": 33
+  }
+}

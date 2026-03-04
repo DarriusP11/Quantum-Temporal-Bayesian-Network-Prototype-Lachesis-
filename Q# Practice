@@ -1,0 +1,26 @@
+// import all functions and operations from Microsoft.Quantum.Intrinsic 
+import Microsoft.Quantum.Intrinsic.*;
+
+operation Main() : Unit {
+    // call the Message function from Microsoft.Quantum.Intrinsic
+    Message("Hello quantum world!");
+}// import only the Message function from Microsoft.Quantum.Intrinsic 
+import Microsoft.Quantum.Intrinsic.Message;
+
+operation Main() : Unit {
+    // call the Message function from Microsoft.Quantum.Intrinsic
+    Message("Hello quantum world!");
+}
+
+use q1 = Qubit(); // Allocate one qubit 
+use q5 = Qubit(); // Allocate five qubits
+
+operation Main() : Result {
+    use q = Qubit();
+    let result = M(q);
+
+    // Reset the qubit so that you can release it
+    Reset(q);
+
+    return result;
+    }

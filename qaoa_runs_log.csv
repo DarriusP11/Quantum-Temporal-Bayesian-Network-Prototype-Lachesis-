@@ -1,0 +1,264 @@
+timestamp,portfolio,backend,depth_p,shots,lambda,bitstring,selected_assets,expected_return,risk,objective,energy
+2025-11-19T00:41:25.092993,toy_3asset,Classical brute-force (QAOA Sampler unavailable),1,1024,2.0,100,AAPL,0.1,0.04,0.020000000000000004,-0.020000000000000004
+2025-11-19T00:41:30.896345,toy_3asset,Classical brute-force,1,1024,2.0,100,AAPL,0.1,0.04,0.020000000000000004,-0.020000000000000004
+2025-11-18 23:15:30,Qiskit QAOA (Sampler stub),0.5000,110,AAPL|MSFT,0.220000,0.110000,0.055000,-0.055000,1024,"Currently using the same classical optimizer, but labeled as a sampler-based QAOA mode for UX and logging. Can be wired to real Qiskit QAOA later. (p=1, shots=1024)"
+2025-11-18 23:15:35,Qiskit QAOA (Aer Sampler stub),0.5000,110,AAPL|MSFT,0.220000,0.110000,0.055000,-0.055000,1024,"Aer Sampler path is stubbed due to version mismatches. Using the classical optimizer while preserving the investor-facing story. (p=1, shots=1024)"
+2025-11-18 23:36:16,Classical brute-force,0.5000,01000,MSFT,0.120000,0.055000,0.032500,-0.032500,1024,Exact search over all bitstrings (ground truth).
+2025-11-18 23:36:42,Qiskit QAOA (Aer Sampler stub),0.5000,01000,MSFT,0.120000,0.055000,0.032500,-0.032500,1024,Aer Sampler path is stubbed due to version mismatches. Using the classical optimizer while preserving the investor-facing story.
+2025-11-18 23:42:13,Classical brute-force,0.5000,01000,MSFT,0.120000,0.055000,0.032500,-0.032500,1024,Exact search over all bitstrings (ground truth).
+2025-11-18 23:42:23,Classical brute-force,0.5000,01000,MSFT,0.120000,0.055000,0.032500,-0.032500,1024,Exact search over all bitstrings (ground truth).
+2025-11-18 23:50:05,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,Exact search over all bitstrings (ground truth).
+2025-11-18 23:53:03,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,Exact search over all bitstrings (ground truth).
+2025-11-18 23:54:26,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,Exact search over all bitstrings (ground truth).
+2025-11-18 23:55:13,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,Exact search over all bitstrings (ground truth).
+2025-11-20 00:02:39,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,Exact search over all bitstrings (ground truth).
+2025-11-21 18:29:03,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,0,
+2025-11-21 18:29:03,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,0,
+2025-11-21 18:29:16,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,0,
+2025-11-21 18:29:16,Qiskit QAOA (Aer Sampler stub) (fallback to brute-force),0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,0,
+2025-11-22 00:27:25,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,
+2025-11-22 00:27:25,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,
+2025-11-22 00:28:16,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,
+2025-11-22 00:28:16,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,
+2025-11-22 00:47:21,Classical brute-force,0.5000,01000,MSFT,0.120000,0.055000,0.032500,-0.032500,1024,
+2025-11-22 00:47:21,Qiskit QAOA (NumPy fallback),0.5000,11000,AAPL|MSFT,0.230000,0.185000,0.022500,-0.022500,1024,
+2025-11-22 00:53:31,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,Portfolio=Toy 3-asset tech portfolio (classical baseline)
+2025-11-22 00:53:31,"QAOA (Aer Sampler, fallback to classical)",0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,Portfolio=Toy 3-asset tech portfolio
+2025-11-22 00:54:05,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,Portfolio=Toy 3-asset tech portfolio (classical baseline)
+2025-11-22 00:54:05,"QAOA (Aer Sampler, fallback to classical)",0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,Portfolio=Toy 3-asset tech portfolio
+2025-11-22 01:06:22,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,Portfolio=Toy 3-asset tech portfolio (classical baseline)
+2025-11-22 01:06:22,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,Portfolio=Toy 3-asset tech portfolio
+2025-11-22 10:28:29,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,Portfolio=Toy 3-asset tech portfolio (classical baseline)
+2025-11-22 10:28:29,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,Portfolio=Toy 3-asset tech portfolio
+2025-11-22 10:31:26,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline
+2025-11-22 10:31:26,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend
+2025-11-22 10:31:58,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline
+2025-11-22 10:31:58,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend
+2025-11-22 10:33:34,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline
+2025-11-22 10:33:34,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend
+2025-11-22 10:33:45,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline
+2025-11-22 10:33:45,"Qiskit QAOA (Sampler stub) (no qiskit-optimization, classical fallback)",0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend
+2025-11-22 10:33:55,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline
+2025-11-22 10:33:55,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend
+2025-11-22 10:34:08,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline
+2025-11-22 10:34:08,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend
+2025-11-22 10:34:29,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline
+2025-11-22 10:34:29,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend
+2025-11-22 10:34:38,Classical brute-force,0.5000,01000,MSFT,0.120000,0.055000,0.032500,-0.032500,1024,classical_baseline
+2025-11-22 10:34:38,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",0.5000,01000,MSFT,0.120000,0.055000,0.032500,-0.032500,1024,user_backend
+2025-11-22 10:53:55,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline
+2025-11-22 10:53:55,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend
+2025-11-22 10:54:14,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline
+2025-11-22 10:54:14,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend
+2025-11-22 10:54:42,Classical brute-force,0.5000,01000,MSFT,0.120000,0.055000,0.032500,-0.032500,1024,classical_baseline
+2025-11-22 10:54:42,"Qiskit QAOA (Sampler stub) (no qiskit-optimization, classical fallback)",0.5000,01000,MSFT,0.120000,0.055000,0.032500,-0.032500,1024,user_backend
+2025-11-22 10:58:04,Classical brute-force,0.5000,01000,MSFT,0.120000,0.055000,0.032500,-0.032500,1024,classical_baseline
+2025-11-22 10:58:04,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",0.5000,01000,MSFT,0.120000,0.055000,0.032500,-0.032500,1024,user_backend
+2025-11-22 11:01:44,Classical brute-force,0.5000,01000,MSFT,0.120000,0.055000,0.032500,-0.032500,1024,classical_baseline
+2025-11-22 11:01:44,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",0.5000,01000,MSFT,0.120000,0.055000,0.032500,-0.032500,1024,user_backend
+2025-11-22 20:28:57,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline
+2025-11-22 20:28:57,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend
+2025-11-22 21:42:18,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline
+2025-11-22 21:42:18,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend
+2025-11-22 21:58:49,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline
+2025-11-22 21:58:49,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend
+2025-11-22 22:00:24,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline
+2025-11-22 22:00:24,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend
+2025-11-22 22:13:35,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline
+2025-11-22 22:13:35,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend
+2025-11-22 22:14:08,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline
+2025-11-22 22:14:08,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend
+2025-11-22 22:14:40,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline
+2025-11-22 22:14:40,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend
+2025-11-22 22:14:44,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline
+2025-11-22 22:14:44,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend
+2025-11-22 22:14:47,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline
+2025-11-22 22:14:47,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend
+2025-11-22 22:14:48,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline
+2025-11-22 22:14:48,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend
+2025-11-22 22:18:03,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline
+2025-11-22 22:18:03,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend
+2025-11-22 23:35:34,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline_manual_run
+2025-11-22 23:35:34,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend_manual_run
+2025-11-22 23:35:47,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline_manual_run
+2025-11-22 23:35:47,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend_manual_run
+2025-11-22 23:35:50,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline_manual_run
+2025-11-22 23:35:50,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend_manual_run
+2025-11-22 23:35:57,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline_manual_run
+2025-11-22 23:35:57,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend_manual_run
+2025-11-22 23:45:05,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,classical_baseline_manual_run
+2025-11-22 23:45:05,Classical brute-force,0.5000,110,AAPL|MSFT,0.220000,0.146000,0.037000,-0.037000,1024,user_backend_manual_run
+2025-11-22 23:45:26,Classical brute-force,0.5000,11001,AAPL|MSFT|GLD,0.002811,0.001329,0.000741,-0.000741,1024,classical_baseline_manual_run
+2025-11-22 23:45:26,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",0.5000,11001,AAPL|MSFT|GLD,0.002811,0.001329,0.000741,-0.000741,1024,user_backend_manual_run
+2025-11-23 00:17:52,Classical brute-force,0.6000,110,AAPL|MSFT,0.220000,0.146000,0.073600,-0.073600,1024,classical_baseline_persona_conservative
+2025-11-23 00:17:52,Classical brute-force,0.6000,110,AAPL|MSFT,0.220000,0.146000,0.073600,-0.073600,1024,user_backend_persona_conservative
+2025-11-23 00:17:57,Classical brute-force,1.0000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.300000,-0.300000,1024,classical_baseline_persona_balanced
+2025-11-23 00:17:57,Classical brute-force,1.0000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.300000,-0.300000,1024,user_backend_persona_balanced
+2025-11-23 00:17:59,Classical brute-force,1.6000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.649800,-0.649800,1024,classical_baseline_persona_aggressive
+2025-11-23 00:17:59,Classical brute-force,1.6000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.649800,-0.649800,1024,user_backend_persona_aggressive
+2025-11-23 00:18:08,Classical brute-force,1.6000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.649800,-0.649800,1024,classical_baseline_manual_run
+2025-11-23 00:18:08,Classical brute-force,1.6000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.649800,-0.649800,1024,user_backend_manual_run
+2025-11-23 01:42:41,Classical brute-force,0.6000,110,AAPL|MSFT,0.220000,0.146000,0.073600,-0.073600,1024,classical_baseline_persona_conservative
+2025-11-23 01:42:41,Classical brute-force,0.6000,110,AAPL|MSFT,0.220000,0.146000,0.073600,-0.073600,1024,user_backend_persona_conservative
+2025-11-23 01:48:37,Classical brute-force,0.6000,110,AAPL|MSFT,0.220000,0.146000,0.073600,-0.073600,1024,classical_baseline_manual_run
+2025-11-23 01:48:37,Classical brute-force,0.6000,110,AAPL|MSFT,0.220000,0.146000,0.073600,-0.073600,1024,user_backend_manual_run
+2025-11-23 01:48:56,Classical brute-force,1.6000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.649800,-0.649800,1024,classical_baseline_persona_aggressive
+2025-11-23 01:48:56,Classical brute-force,1.6000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.649800,-0.649800,1024,user_backend_persona_aggressive
+2025-11-23 01:52:38,Classical brute-force,0.6000,110,AAPL|MSFT,0.220000,0.146000,0.073600,-0.073600,1024,classical_baseline_persona_conservative
+2025-11-23 01:52:38,Classical brute-force,0.6000,110,AAPL|MSFT,0.220000,0.146000,0.073600,-0.073600,1024,user_backend_persona_conservative
+2025-11-23 01:53:12,Classical brute-force,0.6000,110,AAPL|MSFT,0.220000,0.146000,0.073600,-0.073600,1024,classical_baseline_manual_run
+2025-11-23 01:53:12,Classical brute-force,0.6000,110,AAPL|MSFT,0.220000,0.146000,0.073600,-0.073600,1024,user_backend_manual_run
+2025-11-24 00:45:03,Classical brute-force,1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,classical_baseline
+2025-11-24 00:45:03,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,user_backend
+2025-11-24 00:45:31,Classical brute-force,1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,classical_baseline
+2025-11-24 00:45:31,"Qiskit QAOA (Sampler stub) (no qiskit-optimization, classical fallback)",1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,user_backend
+2025-11-24 00:47:13,Classical brute-force,1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,classical_baseline
+2025-11-24 00:47:13,"Qiskit QAOA (Sampler stub) (no qiskit-optimization, classical fallback)",1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,user_backend
+2025-11-24 00:51:29,Classical brute-force,0.6000,11001,AAPL|MSFT|GLD,0.002811,0.001329,0.001155,-0.001155,1024,classical_baseline
+2025-11-24 00:51:29,"Qiskit QAOA (Sampler stub) (no qiskit-optimization, classical fallback)",0.6000,11001,AAPL|MSFT|GLD,0.002811,0.001329,0.001155,-0.001155,1024,user_backend
+2025-11-24 01:17:45,Classical brute-force,1.6000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.649800,-0.649800,1024,classical_baseline_manual
+2025-11-24 01:17:45,Classical brute-force,1.6000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.649800,-0.649800,1024,user_backend_manual
+2025-11-24 01:52:14,Classical brute-force,1.6000,11101,AAPL|MSFT|QQQ|GLD,0.004338,0.002041,0.008165,-0.008165,1024,classical_baseline_persona_aggressive|regime=bull
+2025-11-24 01:52:14,Classical brute-force,1.6000,11101,AAPL|MSFT|QQQ|GLD,0.004338,0.002041,0.008165,-0.008165,1024,user_backend_persona_aggressive|regime=bull
+2025-11-24 13:53:32,Classical brute-force,0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,classical_baseline
+2025-11-24 13:53:32,Classical brute-force,0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,user_backend
+2025-11-24 14:05:13,Classical brute-force,1.0000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.003615,-0.003615,1024,classical_baseline
+2025-11-24 14:05:13,Classical brute-force,1.0000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.003615,-0.003615,1024,user_backend
+2025-11-24 14:05:53,Classical brute-force,1.0000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.003615,-0.003615,1024,classical_baseline
+2025-11-24 14:05:53,Classical brute-force,1.0000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.003615,-0.003615,1024,user_backend
+2025-11-24 14:07:08,Classical brute-force,1.0000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.003615,-0.003615,1024,classical_baseline
+2025-11-24 14:07:08,Classical brute-force,1.0000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.003615,-0.003615,1024,user_backend
+2025-11-24 14:09:37,Classical brute-force,1.0000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.003615,-0.003615,1024,classical_baseline
+2025-11-24 14:09:37,Classical brute-force,1.0000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.003615,-0.003615,1024,user_backend
+2025-11-24 14:25:48,Classical brute-force,1.0000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.300000,-0.300000,1024,classical_baseline
+2025-11-24 14:25:48,Classical brute-force,1.0000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.300000,-0.300000,1024,user_backend
+2025-11-24 14:26:07,Classical brute-force,1.0000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.300000,-0.300000,1024,classical_baseline
+2025-11-24 14:26:07,Classical brute-force,1.0000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.300000,-0.300000,1024,user_backend
+2025-11-24 19:36:50,Classical brute-force,0.6000,11001,AAPL|MSFT|GLD,0.002811,0.001329,0.001155,-0.001155,1024,classical_baseline
+2025-11-24 19:36:50,Classical brute-force,0.6000,11001,AAPL|MSFT|GLD,0.002811,0.001329,0.001155,-0.001155,1024,user_backend
+2025-11-24 19:37:10,Classical brute-force,0.6000,11001,AAPL|MSFT|GLD,0.002811,0.001329,0.001155,-0.001155,1024,classical_baseline
+2025-11-24 19:37:10,Classical brute-force,0.6000,11001,AAPL|MSFT|GLD,0.002811,0.001329,0.001155,-0.001155,1024,user_backend
+2025-11-24 19:39:26,Classical brute-force,1.0000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.003615,-0.003615,1024,classical_baseline
+2025-11-24 19:39:26,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",1.0000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.003615,-0.003615,1024,user_backend
+2025-11-24 19:49:20,Classical brute-force,1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,classical_baseline
+2025-11-24 19:49:20,Classical brute-force,1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,user_backend
+2025-11-24 19:53:07,Classical brute-force,1.0000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.003615,-0.003615,1024,classical_baseline
+2025-11-24 19:53:07,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",1.0000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.003615,-0.003615,1024,user_backend
+2025-11-24 19:58:53,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,classical_baseline
+2025-11-24 19:58:53,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,user_backend
+2025-11-24 23:26:59,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,classical_baseline
+2025-11-24 23:26:59,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,user_backend
+2025-11-24 23:27:23,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,classical_baseline
+2025-11-24 23:27:23,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,user_backend
+2025-11-24 23:27:43,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,classical_baseline
+2025-11-24 23:27:43,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,user_backend
+2025-11-24 23:27:58,Classical brute-force,1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,classical_baseline
+2025-11-24 23:27:58,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,user_backend
+2025-11-25 01:04:05,Classical brute-force,1.0000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.003615,-0.003615,1024,classical_baseline
+2025-11-25 01:04:05,Classical brute-force,1.0000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.003615,-0.003615,1024,user_backend
+2025-11-26 00:15:47,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,classical_baseline
+2025-11-26 00:15:47,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,user_backend
+2025-11-26 00:15:55,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,classical_baseline
+2025-11-26 00:15:55,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,user_backend
+2025-11-26 18:39:19,Classical brute-force,0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,classical_baseline
+2025-11-26 18:39:19,Classical brute-force,0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,user_backend
+2025-11-26 18:43:40,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,classical_baseline
+2025-11-26 18:43:40,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,user_backend
+2025-11-26 18:45:19,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,classical_baseline
+2025-11-26 18:45:19,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,user_backend
+2025-11-26 18:55:02,Classical brute-force,0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,classical_baseline
+2025-11-26 18:55:02,Classical brute-force,0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,user_backend
+2025-11-27 00:28:24,Classical brute-force,1.0000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.300000,-0.300000,1024,classical_baseline
+2025-11-27 00:28:24,Classical brute-force,1.0000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.300000,-0.300000,1024,user_backend
+2025-11-27 00:47:42,Classical brute-force,1.6000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.649800,-0.649800,1024,classical_baseline
+2025-11-27 00:47:42,Classical brute-force,1.6000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.649800,-0.649800,1024,user_backend
+2025-11-27 00:50:13,Classical brute-force,1.0000,111,AAPL|MSFT|GOOG,0.180000,0.367900,0.180000,-0.180000,1024,classical_baseline
+2025-11-27 00:50:13,Classical brute-force,1.0000,111,AAPL|MSFT|GOOG,0.180000,0.367900,0.180000,-0.180000,1024,user_backend
+2025-11-27 00:59:42,Classical brute-force,1.0000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.300000,-0.300000,1024,classical_baseline
+2025-11-27 00:59:42,Classical brute-force,1.0000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.300000,-0.300000,1024,user_backend
+2025-11-27 01:13:22,Classical brute-force,1.6000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.649800,-0.649800,1024,classical_baseline
+2025-11-27 01:13:22,Classical brute-force,1.6000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.649800,-0.649800,1024,user_backend
+2025-11-27 01:17:25,Classical brute-force,1.6000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.649800,-0.649800,1024,classical_baseline
+2025-11-27 01:17:25,Classical brute-force,1.6000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.649800,-0.649800,1024,user_backend
+2025-11-28 01:01:39,Classical brute-force,1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,classical_baseline
+2025-11-28 01:01:39,Classical brute-force,1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,user_backend
+2025-11-28 01:05:18,Classical brute-force,1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,classical_baseline
+2025-11-28 01:05:18,Classical brute-force,1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,user_backend
+2025-11-29 01:27:46,Classical brute-force,0.6000,110,AAPL|MSFT,0.220000,0.146000,0.073600,-0.073600,1024,classical_baseline
+2025-11-29 01:27:47,Classical brute-force,0.6000,110,AAPL|MSFT,0.220000,0.146000,0.073600,-0.073600,1024,user_backend
+2025-11-29 01:27:55,Classical brute-force,0.6000,110,AAPL|MSFT,0.220000,0.146000,0.073600,-0.073600,1024,classical_baseline
+2025-11-29 01:27:55,Classical brute-force,0.6000,110,AAPL|MSFT,0.220000,0.146000,0.073600,-0.073600,1024,user_backend
+2025-11-29 01:54:59,Classical brute-force,1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,classical_baseline
+2025-11-29 01:54:59,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,user_backend
+2025-11-29 01:55:07,Classical brute-force,1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,classical_baseline
+2025-11-29 01:55:07,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,user_backend
+2025-11-29 02:07:21,Classical brute-force,1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,classical_baseline
+2025-11-29 02:07:21,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,user_backend
+2025-11-29 23:08:53,Classical brute-force,1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,classical_baseline
+2025-11-29 23:08:53,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,user_backend
+2025-11-30 01:07:23,Classical brute-force,0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,classical_baseline
+2025-11-30 01:07:23,Classical brute-force,0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,user_backend
+2025-11-30 21:58:17,Classical brute-force,1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,classical_baseline
+2025-11-30 21:58:17,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,user_backend
+2025-11-30 22:13:27,Classical brute-force,1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,classical_baseline
+2025-11-30 22:13:27,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,user_backend
+2025-11-30 23:25:15,Classical brute-force,1.6000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.649800,-0.649800,1024,classical_baseline
+2025-11-30 23:25:15,Classical brute-force,1.6000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.649800,-0.649800,1024,user_backend
+2025-11-30 23:26:05,Classical brute-force,1.0000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.300000,-0.300000,1024,classical_baseline
+2025-11-30 23:26:05,Classical brute-force,1.0000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.300000,-0.300000,1024,user_backend
+2025-12-01 00:13:59,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,classical_baseline
+2025-12-01 00:13:59,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,user_backend
+2025-12-01 00:46:42,Classical brute-force,0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,classical_baseline
+2025-12-01 00:46:42,Classical brute-force,0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,user_backend
+2025-12-02 15:51:07,Classical brute-force,0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,classical_baseline
+2025-12-02 15:51:07,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,user_backend
+2025-12-03 09:59:10,Classical brute-force,1.6000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.649800,-0.649800,1024,classical_baseline
+2025-12-03 09:59:10,Classical brute-force,1.6000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.649800,-0.649800,1024,user_backend
+2025-12-03 22:36:21,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,classical_baseline
+2025-12-03 22:36:21,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,user_backend
+2025-12-06 12:32:21,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,classical_baseline
+2025-12-06 12:32:21,"Qiskit QAOA (Aer Sampler stub) (no qiskit-optimization, classical fallback)",0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,user_backend
+2025-12-06 20:11:09,Classical brute-force,0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,classical_baseline
+2025-12-06 20:11:09,Classical brute-force,0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,user_backend
+2025-12-06 20:46:38,Classical brute-force,0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,classical_baseline
+2025-12-06 20:46:38,Classical brute-force,0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,user_backend
+2025-12-06 21:08:43,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,classical_baseline
+2025-12-06 21:08:43,"QAOA (Aer Sampler) (no qiskit-optimization, classical fallback)",0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,user_backend
+2025-12-06 21:16:24,Classical brute-force,0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,classical_baseline
+2025-12-06 21:16:24,Classical brute-force,0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,user_backend
+2025-12-11 20:26:06,Classical brute-force,0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,classical_baseline
+2025-12-11 20:26:06,Classical brute-force,0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,user_backend
+2025-12-11 20:27:09,Classical brute-force,1.0000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.003615,-0.003615,1024,classical_baseline
+2025-12-11 20:27:09,Classical brute-force,1.0000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.003615,-0.003615,1024,user_backend
+2025-12-12 19:23:06,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,classical_baseline
+2025-12-12 19:23:06,"QAOA (Aer Sampler) (no qiskit-optimization, classical fallback)",0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,user_backend
+2025-12-18 13:59:33,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,classical_baseline
+2025-12-18 13:59:33,"QAOA (Aer Sampler) (no qiskit-optimization, classical fallback)",0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,user_backend
+2025-12-20 12:53:05,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,classical_baseline
+2025-12-20 12:53:05,"QAOA (Aer Sampler) (no qiskit-optimization, classical fallback)",0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,user_backend
+2025-12-21 01:07:30,Classical brute-force,0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,classical_baseline
+2025-12-21 01:07:30,Classical brute-force,0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,user_backend
+2025-12-22 01:31:23,Classical brute-force,1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,classical_baseline
+2025-12-22 01:31:23,"QAOA (Aer Sampler) (no qiskit-optimization, classical fallback)",1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,user_backend
+2025-12-27 20:24:07,Classical brute-force,0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,classical_baseline
+2025-12-27 20:24:07,Classical brute-force,0.8000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.183400,-0.183400,1024,user_backend
+2026-01-08 20:02:56,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,classical_baseline
+2026-01-08 20:02:56,"QAOA (Aer Sampler) (no qiskit-optimization, classical fallback)",0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,user_backend
+2026-01-10 01:50:04,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,classical_baseline
+2026-01-10 01:50:04,"QAOA (Aer Sampler) (no qiskit-optimization, classical fallback)",0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,user_backend
+2026-01-19 21:02:13,Classical brute-force,0.8000,00011,TLT|GLD,0.025585,0.000310,0.020406,-0.020406,1024,classical_baseline
+2026-01-19 21:02:13,"QAOA (Aer Sampler) (no qiskit-optimization, classical fallback)",0.8000,00011,TLT|GLD,0.025585,0.000310,0.020406,-0.020406,1024,user_backend
+2026-01-20 19:18:30,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,classical_baseline
+2026-01-20 19:18:30,"QAOA (Aer Sampler) (no qiskit-optimization, classical fallback)",0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,user_backend
+2026-01-22 21:08:21,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,classical_baseline
+2026-01-22 21:08:21,"QAOA (Aer Sampler) (no qiskit-optimization, classical fallback)",0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,user_backend
+2026-01-24 21:33:16,Classical brute-force,0.8000,110,AAPL|MSFT,0.140000,0.189800,0.074040,-0.074040,1024,classical_baseline
+2026-01-24 21:33:16,Classical brute-force,0.8000,110,AAPL|MSFT,0.140000,0.189800,0.074040,-0.074040,1024,user_backend
+2026-01-24 21:33:27,Classical brute-force,0.8000,110,AAPL|MSFT,0.140000,0.189800,0.074040,-0.074040,1024,classical_baseline
+2026-01-24 21:33:27,Classical brute-force,0.8000,110,AAPL|MSFT,0.140000,0.189800,0.074040,-0.074040,1024,user_backend
+2026-01-28 23:56:54,Classical brute-force,0.8000,00011,TLT|GLD,0.025585,0.000310,0.020406,-0.020406,1024,classical_baseline
+2026-01-28 23:56:54,"QAOA (Aer Sampler) (no qiskit-optimization, classical fallback)",0.8000,00011,TLT|GLD,0.025585,0.000310,0.020406,-0.020406,1024,user_backend
+2026-02-26 20:40:53,Classical brute-force,1.0000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.300000,-0.300000,1024,
+2026-02-27 01:33:10,"QAOA (Aer Sampler) (no qiskit-optimization, classical fallback)",1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,
+2026-03-03 14:41:59,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,classical_baseline
+2026-03-03 14:41:59,"QAOA (Aer Sampler) (no qiskit-optimization, classical fallback)",0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,user_backend

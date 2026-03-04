@@ -1,0 +1,12 @@
+{
+  "status": "PASS",
+  "best_energy": -0.13979243080093262,
+  "reference_energy": -0.16328450271842174,
+  "abs_delta": 0.023492071917489116,
+  "thresholds": {
+    "pass_delta": 0.05,
+    "warn_delta": 0.15
+  },
+  "timestamp": "2026-01-03T13:32:29",
+  "ref_mode": "Promote(best sweep)"
+}

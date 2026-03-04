@@ -1,0 +1,22 @@
+import torch
+import torch.nn as nn 
+import torch.nn.functional as F
+
+from torch.optim import Adam
+from torch.utils.data import TensorDataset, DataLoader 
+
+
+import Lightning as L
+
+
+
+token_to_id = {'what': 0,
+               'is': 1,
+               'statquest': 2,
+               'awesome': 3,
+               '<EOS>': 4
+              }
+
+
+
+id_to_token = dict(map(reversed, token_to_id.items()))

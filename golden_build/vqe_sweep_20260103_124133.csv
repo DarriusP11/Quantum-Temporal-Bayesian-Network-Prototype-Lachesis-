@@ -1,0 +1,2 @@
+run_id,ok,energy,risk_budget_multiplier,smoke_status,abs_delta,reference_energy,ansatz,optimizer,backend_choice,reps,maxiter,seed,seconds,notes
+0,False,-0.16328450271842174,1.0809243295876214,PASS,0.0,-0.16328450271842174,TwoLocal,COBYLA,Estimator (default),2,80,42,0.003493070602416992,Toy fallback energy (Qiskit VQE deps missing or failed).

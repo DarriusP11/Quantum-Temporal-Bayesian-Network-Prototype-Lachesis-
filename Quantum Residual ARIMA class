@@ -1,0 +1,229 @@
+import numpy as np
+from statsmodels.tsa.arima.model import ARIMA
+from scipy.optimize import minimize
+
+# Qiskit imports
+from qiskit_aer import Aer
+
+# NOTE: if this import errors in your environment, try:
+# from qiskit_aer import Aer
+
+
+class QuantumResidualARIMA:
+    """
+    Hybrid ARIMA + quantum residual model.
+
+    Step 1: Fit ARIMA on series.
+    Step 2: Compute residuals r_t = x_t - x_hat_t.
+    Step 3: Train a 1-qubit variational circuit to learn r_t -> r_{t+1}.
+    Step 4: Forecast: ARIMA forecast + quantum-predicted residual.
+    """
+
+    def __init__(
+        self,
+        arima_order=(1, 0, 0),
+        shots=1024,
+        feature_scale=2.0,
+        maxiter=80,
+        train_split=0.8,
+        random_seed=42,
+    ):
+        self.arima_order = arima_order
+        self.shots = shots
+        self.feature_scale = feature_scale
+        self.maxiter = maxiter
+        self.train_split = train_split
+        self.random_seed = random_seed
+
+        self.backend = Aer.get_backend("qasm_simulator")
+
+        # Will be filled after fit()
+        self.fitted_ = False
+        self.params_ = None
+
+    # ---------- PUBLIC API ----------
+
+    def fit(self, series):
+        """
+        series : 1D array-like time series (numpy, list, pandas Series)
+        """
+        self.data = np.asarray(series, dtype=float)
+        T = len(self.data)
+        if T < 10:
+            raise ValueError("Need at least ~10 points to do anything meaningful.")
+
+        # ---- 1. Fit ARIMA ----
+        self.arima_model_ = ARIMA(self.data, order=self.arima_order).fit()
+        self.arima_fitted_ = self.arima_model_.fittedvalues
+
+        # ---- 2. Residuals r_t = x_t - x_hat_t ----
+        # Skip the first point where fittedvalues may not exist.
+        residuals = self.data[1:] - self.arima_fitted_[1:]
+        self.residuals_ = residuals
+
+        # Build supervised dataset: X_t = r_t, y_t = r_{t+1}
+        X = residuals[:-1]
+        y = residuals[1:]
+
+        # Simple train/test split (for diagnostics, not strictly required)
+        split = int(self.train_split * len(X))
+        self.X_train_, self.X_test_ = X[:split], X[split:]
+        self.y_train_, self.y_test_ = y[:split], y[split:]
+
+        # Range of residuals (for scaling circuit output)
+        self.y_min_ = self.y_train_.min()
+        self.y_max_ = self.y_train_.max()
+        self.y_range_ = self.y_max_ - self.y_min_
+        if self.y_range_ == 0:
+            self.y_range_ = 1.0  # avoid divide-by-zero in degenerate case
+
+        # ---- 3. Optimize quantum parameters ----
+        np.random.seed(self.random_seed)
+        init_params = np.random.uniform(0, 2 * np.pi, size=2)  # two parameters
+
+        res = minimize(
+            self._loss_fn,
+            init_params,
+            method="Nelder-Mead",
+            options={"maxiter": self.maxiter, "disp": False},
+        )
+
+        self.params_ = res.x
+        self.train_mse_ = float(res.fun)
+
+        # Simple test MSE (just for your info)
+        self.test_mse_ = self._eval_test_mse()
+
+        # Save last residual (r_T) for one-step-ahead forecast
+        self.last_residual_ = residuals[-1]
+
+        self.fitted_ = True
+        return self
+
+    def forecast(self, steps=1):
+        """
+        Currently supports steps=1 cleanly.
+        Returns a dict with ARIMA-only, quantum residual, and hybrid forecast.
+        """
+        if not self.fitted_:
+            raise RuntimeError("Call fit(series) before forecast().")
+
+        if steps != 1:
+            raise NotImplementedError(
+                "Multi-step forecasts not implemented yet. Use steps=1 for now."
+            )
+
+        # ARIMA one-step-ahead forecast
+        arima_next = float(self.arima_model_.forecast(steps=1)[0])
+
+        # Quantum-predicted next residual from last residual
+        q_resid_next = float(self._predict_residual_scalar(self.last_residual_, self.params_))
+
+        hybrid_next = arima_next + q_resid_next
+
+        return {
+            "arima_forecast": arima_next,
+            "quantum_residual": q_resid_next,
+            "hybrid_forecast": hybrid_next,
+        }
+
+    # ---------- INTERNAL QUANTUM HELPERS ----------
+
+    def _build_qc(self, x, params):
+        """
+        Create a 1-qubit circuit:
+        - Encode residual x via RY(feature_scale * x)
+        - Apply RZ(theta0), RY(theta1)
+        - Measure in Z basis
+        """
+        theta0, theta1 = params
+
+        qc = QuantumCircuit(1, 1)
+
+        # Feature encoding
+        qc.ry(self.feature_scale * float(x), 0)
+
+        # Simple variational ansatz
+        qc.rz(theta0, 0)
+        qc.ry(theta1, 0)
+
+        qc.measure(0, 0)
+        return qc
+
+    def _circuit_output_prob(self, x, params):
+        """
+        Run circuit and return probability of measuring '1'.
+        """
+        qc = self._build_qc(x, params)
+        job = execute(qc, backend=self.backend, shots=self.shots)
+        result = job.result()
+        counts = result.get_counts()
+        p1 = counts.get("1", 0) / self.shots
+        return p1
+
+    def _predict_residual_scalar(self, x, params):
+        """
+        Map probability p1 in [0,1] to residual in [y_min, y_max].
+        """
+        p1 = self._circuit_output_prob(x, params)
+        y_hat = self.y_min_ + p1 * self.y_range_
+        return y_hat
+
+    # ---------- OPTIMIZATION OBJECTIVES ----------
+
+    def _loss_fn(self, params):
+        preds = np.array(
+            [self._predict_residual_scalar(xi, params) for xi in self.X_train_]
+        )
+        return np.mean((preds - self.y_train_) ** 2)
+
+    def _eval_test_mse(self):
+        if len(self.X_test_) == 0:
+            return np.nan
+        preds = np.array(
+            [self._predict_residual_scalar(xi, self.params_) for xi in self.X_test_]
+        )
+        return float(np.mean((preds - self.y_test_) ** 2))
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Example: fake price path (replace this with real data)
+np.random.seed(0)
+T = 250
+returns = np.random.normal(0, 0.01, size=T)
+prices = 100 * np.exp(np.cumsum(returns))  # geometric random walk
+
+plt.plot(prices)
+plt.title("Example price series")
+plt.show()
+# Use log returns (difference of log-prices)
+log_prices = np.log(prices)
+log_returns = np.diff(log_prices)  # length T-1
+
+from quantum_residual_arima import QuantumResidualARIMA  # if you saved the class in this file
+# or just use the class directly if it's in the same notebook.
+
+qra = QuantumResidualARIMA(
+    arima_order=(1, 0, 0),   # tune this like regular ARIMA
+    shots=1024,
+    feature_scale=2.0,
+    maxiter=80,
+)
+
+qra.fit(log_returns)
+
+print("Training MSE (residual model):", qra.train_mse_)
+print("Test MSE (residual model):     ", qra.test_mse_)
+
+forecast_dict = qra.forecast(steps=1)
+print("\nARIMA-only forecast (return):      ", forecast_dict["arima_forecast"])
+print("Quantum residual correction:       ", forecast_dict["quantum_residual"])
+print("Hybrid forecast (return):          ", forecast_dict["hybrid_forecast"])
+last_price = prices[-1]
+hybrid_ret = forecast_dict["hybrid_forecast"]
+
+# approximate next price = last_price * exp(hybrid_ret)
+hybrid_price_forecast = last_price * np.exp(hybrid_ret)
+
+print("Last observed price:     ", last_price)
+print("Hybrid next price guess:", hybrid_price_forecast)

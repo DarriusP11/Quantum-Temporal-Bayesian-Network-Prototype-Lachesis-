@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Lachesis App Full Documentation</title>
+<style>
+  body { font-family: "Helvetica", Arial, sans-serif; line-height: 1.38; color: #111; margin: 36px; }
+  h1, h2, h3, h4 { color: #1b1b1b; }
+  h1 { font-size: 26px; margin-bottom: 0.2em; }
+  h2 { font-size: 21px; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-top: 1.1em; }
+  h3 { font-size: 17px; margin-top: 1em; }
+  h4 { font-size: 14px; margin-top: 0.8em; text-transform: uppercase; letter-spacing: 0.03em; }
+  p { margin: 0.32em 0; }
+  ul { margin-top: 0.2em; margin-bottom: 0.5em; }
+  li { margin: 0.12em 0; }
+  .muted { color: #555; }
+  .box { border: 1px solid #ddd; padding: 10px 12px; margin: 10px 0; background: #fafafa; }
+  .small { font-size: 12px; }
+</style>
+</head>
+<body>
+
+<h1>Lachesis / QTBN App - Full Feature Documentation</h1>
+<p class="muted">Generated from the current app codebase (`qtbn_simulator_clean.py`, `Qtbn_UI.py`, `qaoa_scenario1.py`, `vqe_tab.py`).</p>
+
+<h2>1) App Overview</h2>
+<p>This application is a Streamlit-based quantum-finance research workbench. It combines quantum circuit simulation, market risk analytics, scenario intelligence, and LLM-assisted explanations into one interface.</p>
+
+<div class="box">
+  <h4>What the app does technically</h4>
+  <ul>
+    <li>Builds and simulates configurable quantum circuits (statevector, density matrix, noisy measurement, fidelity).</li>
+    <li>Computes Monte Carlo VaR/CVaR, market regime labels, and macro stress overlays (FRED or simulated fallback).</li>
+    <li>Integrates sentiment signals (RSS + VADER or Perplexity live-web sentiment) as a risk multiplier.</li>
+    <li>Supports SEC EDGAR filings retrieval and plain-English LLM summaries.</li>
+    <li>Provides QAOA and VQE mini-labs that export stance/risk signals into the broader decision pipeline.</li>
+    <li>Uses owner-gated API key management so non-owner users never see key inputs.</li>
+  </ul>
+</div>
+
+<div class="box">
+  <h4>What this means in plain language</h4>
+  <p>Think of the app as a "control tower" where you can:</p>
+  <ul>
+    <li>Experiment with quantum behavior and noise.</li>
+    <li>Translate that into portfolio risk views.</li>
+    <li>Add real-world context (macro data, sentiment, insider filings).</li>
+    <li>Ask Lachesis (the companion explainer) to describe results in understandable terms.</li>
+  </ul>
+</div>
+
+<h2>2) Core Architecture and Security Model</h2>
+
+<h3>2.1 Authentication and Identity</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>Auth UI and logic live in `Qtbn_UI.py` (`render_auth_gate`).</li>
+  <li>Primary auth provider is Supabase if `supabase_url` and `supabase_anon_key` exist (env/secrets).</li>
+  <li>If Supabase is unavailable or fails, local failover auth is used via `auth_users.json` with salted SHA-256 password hashes.</li>
+  <li>After successful sign-in, the app stores:
+    <ul>
+      <li>`auth_ok`</li>
+      <li>`auth_email_normalized` (lowercased and trimmed)</li>
+      <li>`auth_is_owner` (true only for `darriusperson@gmail.com`)</li>
+      <li>`auth_source` (`supabase` or `local_failover`)</li>
+    </ul>
+  </li>
+</ul>
+<h4>In plain language</h4>
+<p>The app checks who signed in and labels the owner account based on one exact email. If cloud login is unavailable, local login still works.</p>
+
+<h3>2.2 Owner-only API Key Design</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>Service key resolution is centralized: `resolve_api_key(service)`.</li>
+  <li>Precedence order:
+    <ol>
+      <li>Owner session override (Admin tab input, owner only)</li>
+      <li>Streamlit secrets (`st.secrets`)</li>
+      <li>Local `.streamlit/secrets.toml` fallback parsing</li>
+      <li>Environment variable fallback</li>
+      <li>Empty string</li>
+    </ol>
+  </li>
+  <li>Service mappings:
+    <ul>
+      <li>`openai` -> session `openai_api_key`, secret `openai_api_key`, env `QTBN_OPENAI_API_KEY`</li>
+      <li>`fred` -> session `fred_api_key`, secret `fred_api_key`, env `QTBN_FRED_API_KEY`</li>
+      <li>`perplexity` -> session `perplexity_api_key`, secret `perplexity_api_key`, env `QTBN_PERPLEXITY_API_KEY`</li>
+      <li>`voice_openai` -> session `voice_openai_api_key`, secret `lachesis_voice_api_key`, env `QTBN_LACHESIS_VOICE_API_KEY`</li>
+      <li>`voice_elevenlabs` -> session `voice_elevenlabs_api_key`, secret `elevenlabs_api_key`, env `QTBN_ELEVENLABS_API_KEY`</li>
+    </ul>
+  </li>
+  <li>Logout clears auth identity plus API-key related session fields.</li>
+</ul>
+<h4>In plain language</h4>
+<p>Only the owner can type API keys in the UI. Everyone else can still use features if the server already has keys configured, but they never see raw key fields.</p>
+
+<h3>2.3 Main App Composition</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>`qtbn_simulator_clean.py` imports UI/auth helpers from `Qtbn_UI.py`.</li>
+  <li>It safely imports optional modules (VQE tab, QAOA plugin) and degrades gracefully when unavailable.</li>
+  <li>Primary state model is `st.session_state` with utility wrappers `ss_get` / `ss_set`.</li>
+  <li>Persistent user settings are stored in `.qtbn.toml` (non-key settings only).</li>
+</ul>
+<h4>In plain language</h4>
+<p>The app is one unified dashboard. It stitches multiple modules together and uses shared session memory so tabs can influence each other.</p>
+
+<h2>3) Sidebar Deep Dive (full control surface)</h2>
+
+<h3>3.1 Account Block</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>Shows signed-in normalized email and role badge (`Owner` or `User`).</li>
+  <li>`Log out` calls `clear_auth_session()` and reruns app.</li>
+</ul>
+<h4>In plain language</h4>
+<p>This is your identity strip. It confirms who is signed in and lets you end your session quickly.</p>
+
+<h3>3.2 Quantum Controls</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>Global controls: qubit count (1-4), shots, optional seed and seed value.</li>
+  <li>Time-step style gate scheduling for T0, T1, T2.</li>
+  <li>For each qubit/time-step, user chooses gate from `None/H/X/Y/Z/RX/RY/RZ/S/T` and angle in units of pi.</li>
+  <li>CNOT toggles appear conditionally for multi-qubit setups (0-1, 1-2, 2-3 chains).</li>
+  <li>All values feed `build_unitary_circuit()` and downstream measurement/noise functions.</li>
+</ul>
+<h4>In plain language</h4>
+<p>You are building a mini quantum circuit timeline: what operation each qubit gets at each step.</p>
+
+<h3>3.3 Noise Controls</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>Independent toggles for depolarizing, amplitude damping, phase damping, and CNOT depolarizing noise.</li>
+  <li>Per-step numeric parameters:
+    <ul>
+      <li>`p_dep T0/T1/T2`</li>
+      <li>`gamma T0/T1/T2`</li>
+      <li>`lambda T0/T1/T2`</li>
+      <li>`p_CX T0/T1/T2` (if qubits > 1)</li>
+    </ul>
+  </li>
+  <li>`Use last calibration as noise` applies calibrated estimates when present.</li>
+  <li>`Auto-calibrate from quick RB/Tomo` runs `auto_calibrate_noise()`, stores confidence and parameters in session.</li>
+</ul>
+<h4>In plain language</h4>
+<p>You can inject realistic "hardware imperfections" and optionally auto-fit them from quick calibration experiments.</p>
+
+<h3>3.4 Finance / Data Controls</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>Ticker input, lookback days, and `Fetch Market Data` button call `fetch_market_data()`.</li>
+  <li>Portfolio value controls support three dollar basis modes:
+    <ul>
+      <li>Portfolio total</li>
+      <li>Per-share</li>
+      <li>Position value (shares * price)</li>
+    </ul>
+  </li>
+  <li>Risk controls: confidence level alpha, horizon days, MC simulation count, volatility threshold, macro stress toggle.</li>
+  <li>Displays FRED key status only (`Configured/Missing`), never raw key text.</li>
+  <li>Demo mode toggle enables safer synthetic fallback behavior.</li>
+</ul>
+<h4>In plain language</h4>
+<p>This is where you pick market data and define how risk should be measured (how far out, how strict, and under what stress assumptions).</p>
+
+<h3>3.5 Persistence Controls</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>`Save settings` writes selected state to `.qtbn.toml` via `save_persistent_settings()`.</li>
+  <li>`Load settings` restores from `.qtbn.toml` via `load_persistent_settings()`.</li>
+  <li>Any key ending in `_api_key` is ignored on load and excluded from save logic.</li>
+</ul>
+<h4>In plain language</h4>
+<p>You can save your non-sensitive app setup and reload it later. API keys are intentionally not persisted there.</p>
+
+<h2>4) Tab-by-Tab Documentation (Statevector through VQE)</h2>
+
+<h3>4.1 Statevector Tab</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>Runs `Statevector.from_instruction(build_unitary_circuit())`.</li>
+  <li>For 1 qubit: outputs probability of `|0>` and `|1>`.</li>
+  <li>For multiple qubits: computes probabilities over all basis states and charts them (Plotly bar if available).</li>
+</ul>
+<h4>In plain language</h4>
+<p>This tab shows where the quantum system "wants to be" before you measure it.</p>
+
+<h3>4.2 Reduced States Tab</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>Only active for 2-qubit mode.</li>
+  <li>Builds noisy unitary, runs density-matrix simulator, computes partial traces for each qubit.</li>
+  <li>Calculates Bloch vectors from Pauli X/Y/Z expectations and renders dual Bloch sphere visualization if Plotly exists.</li>
+</ul>
+<h4>In plain language</h4>
+<p>This isolates each qubit's individual state so you can see how entanglement/noise changed each one.</p>
+
+<h3>4.3 Measurement Tab</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>Builds ideal measured circuit and noisy measured circuit.</li>
+  <li>Uses transpile/count caching to reduce repeated runtime cost.</li>
+  <li>Computes distribution distance via total variation and reports robustness as `1 - TV`.</li>
+  <li>Displays ideal vs noisy counts in grouped chart.</li>
+</ul>
+<h4>In plain language</h4>
+<p>This compares what results you would get in a perfect world versus a noisy real-world execution.</p>
+
+<h3>4.4 Fidelity and Export Tab</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>Computes global state fidelity between ideal state and noisy density matrix (`state_fidelity`).</li>
+  <li>Includes executive PDF generation/download hook (`generate_executive_report`).</li>
+</ul>
+<h4>In plain language</h4>
+<p>This is your overall quality score for the circuit under current noise settings, plus report export.</p>
+
+<h3>4.5 Presets Tab</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>Preset buttons apply hard-coded configurations:
+    <ul>
+      <li>Bell prep (H -> CX)</li>
+      <li>Dephasing stress</li>
+      <li>Amplitude relaxation</li>
+    </ul>
+  </li>
+  <li>Scenario selector maps named scenario templates to circuit/noise settings (`apply_scenario_preset`).</li>
+</ul>
+<h4>In plain language</h4>
+<p>One-click starting points so you can instantly switch to common experiment setups.</p>
+
+<h3>4.6 Present Scenarios Tab</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>Runs a quick ideal-vs-noisy counts comparison for the current active configuration.</li>
+  <li>Reports robustness and count chart, similar to Measurement tab but packaged as a rapid scenario check.</li>
+</ul>
+<h4>In plain language</h4>
+<p>A fast health check to see how stable the current scenario is.</p>
+
+<h3>4.7 Foresight Tab (Analytical Foresight + Golden Build)</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>Initializes dedicated foresight state namespace (`fx_*`) with threshold defaults.</li>
+  <li>Golden Build controls:
+    <ul>
+      <li>Directory selection (`fx_gb_dir_raw` -> derived `fx_gb_dir`)</li>
+      <li>Core stability thresholds (avg_std, uncertainty)</li>
+      <li>Blessing thresholds (TV, KL)</li>
+      <li>Blessed fixture selection from JSON files</li>
+      <li>Enforcement toggle to disable sweeps on FAIL</li>
+    </ul>
+  </li>
+  <li>Baseline engine:
+    <ul>
+      <li>Multi-seed fallback baseline distribution (`mean_p`, `avg_std`, `uncertainty_penalty`)</li>
+      <li>Core gate status evaluation (PASS/WARN/FAIL)</li>
+      <li>Scenario ranking by KL/TV against active scenario set</li>
+    </ul>
+  </li>
+  <li>Blessing gate compares baseline against selected fixture distribution.</li>
+  <li>Build status merge combines three components: Core Gate + Blessing + VQE Smoke.</li>
+  <li>Fixtures export includes baseline/gate/blessing/vqe/sweeps/forecast and supports download + disk write.</li>
+  <li>VQE bridge write buttons persist vqe smoke/snapshot artifacts into golden build folder.</li>
+  <li>Action panel computes stance, P(risk-on), uncertainty, and confidence proxy.</li>
+  <li>Sweep manager supports what-if sweep generation, session storage, CSV upload/compare, and CSV export.</li>
+  <li>Repo scenarios section exposes reload/save placeholders and disk scenario visibility.</li>
+  <li>QAOA prior bridge reads snapshot-style persona/lambda/return/crash/allocation values from session.</li>
+  <li>Toy QTBN regime forecast produces calm/stressed/crisis trajectories and line chart.</li>
+  <li>Persona lens narration provides CIO/Risk Officer/Retail interpretation text.</li>
+  <li>Debug expander prints full current foresight state package.</li>
+</ul>
+<h4>In plain language</h4>
+<p>This tab is the decision hub. It checks if your model setup is stable, compares it to known good snapshots, merges VQE confidence signals, runs what-if sweeps, and translates probabilities into actionable stance language.</p>
+
+<h3>4.8 Financial Analysis Tab</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>Requires fetched market data; otherwise prompts user to fetch via sidebar.</li>
+  <li>Optional screenshot importer:
+    <ul>
+      <li>Uploads image</li>
+      <li>Calls OpenAI Responses API directly (`/v1/responses`) with strict JSON schema prompt</li>
+      <li>Extracts ticker/shares/market value/diversity/price</li>
+      <li>Can auto-apply inferred portfolio value and ticker into app inputs</li>
+    </ul>
+  </li>
+  <li>Position sizing supports two modes:
+    <ul>
+      <li>Portfolio dollar input -> implied shares</li>
+      <li>Shares input -> implied portfolio dollars</li>
+    </ul>
+  </li>
+  <li>Risk computation:
+    <ul>
+      <li>Log returns + advanced metrics</li>
+      <li>Monte Carlo VaR/CVaR (`monte_carlo_var_cvar`)</li>
+      <li>Optional QAE toggle if dependencies available</li>
+      <li>Sentiment multiplier applied to VaR/CVaR</li>
+      <li>Regime detection using volatility threshold</li>
+    </ul>
+  </li>
+  <li>Macro stress:
+    <ul>
+      <li>Tries live FRED bundle with resolved key</li>
+      <li>Falls back to simulated macro if unavailable</li>
+      <li>Applies stress factor to risk outputs when enabled</li>
+    </ul>
+  </li>
+  <li>QAOA stance linkage:
+    <ul>
+      <li>Loads `qaoa_snapshot.json`</li>
+      <li>Maps persona/crash index to QTBN prior regime and risk-on prior</li>
+      <li>Displays QAOA vs market regime alignment diagnostics</li>
+    </ul>
+  </li>
+  <li>Narrative and explainability:
+    <ul>
+      <li>Generates deterministic risk narrative block</li>
+      <li>Lachesis explainer supports OpenAI or local fallback answer logic</li>
+      <li>Optional voice synthesis via selected provider</li>
+    </ul>
+  </li>
+  <li>History and exports:
+    <ul>
+      <li>Stores risk snapshots in `risk_history` (bounded)</li>
+      <li>Downloads narrative as TXT and JSON</li>
+      <li>Exports full history CSV/JSON</li>
+      <li>Supports current-vs-past snapshot comparison panel with deltas and chart</li>
+    </ul>
+  </li>
+</ul>
+<h4>In plain language</h4>
+<p>This tab turns raw market data into practical downside estimates (bad day and tail-loss scenarios), lets you stress-test for macro shocks, and gives role-specific explanations for decision makers.</p>
+
+<h3>4.9 Insider Trading Tab</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>Fetches SEC EDGAR submissions from `data.sec.gov`.</li>
+  <li>Supports ticker-to-CIK resolution via SEC company tickers endpoint.</li>
+  <li>Requires SEC-compliant User-Agent with contact info.</li>
+  <li>Filters forms (3/4/5), limits number of filings, builds direct archive URLs.</li>
+  <li>Caches ticker map and submissions to reduce repeated network cost.</li>
+  <li>Lachesis summary mode:
+    <ul>
+      <li>OpenAI-driven summary if key configured and enabled</li>
+      <li>Local fallback summary otherwise</li>
+      <li>Optional voice synthesis output</li>
+    </ul>
+  </li>
+</ul>
+<h4>In plain language</h4>
+<p>You can pull insider filing records and have Lachesis explain what those filings might signal, with clear limitations.</p>
+
+<h3>4.10 Lachesis Guide Tab</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>Loads latest QAOA snapshot and maps it to QTBN priors (regime, risk-on, drift).</li>
+  <li>Shows status metrics for QAOA stance + QTBN prior + QAE/macro toggles.</li>
+  <li>Includes pipeline explainer (QAOA -> QTBN priors -> Financial Analysis).</li>
+  <li>Provides interactive Q&amp;A using full app context via `_studio_run_openai_chat`.</li>
+  <li>Displays noise-aware suggestions.</li>
+  <li>Includes QTBN forecast prototype with selectable horizons and JSON export.</li>
+</ul>
+<h4>In plain language</h4>
+<p>This is the app's "translation layer" that explains how all components connect and what your current setup implies.</p>
+
+<h3>4.11 Advanced Quantum Tab</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>QAOA-QTBN bridge inspector panel.</li>
+  <li>State tomography (1-qubit) with Bloch vector reconstruction and visualization.</li>
+  <li>Process fidelity proxy for selected single-qubit gates.</li>
+  <li>Quantum Volume proxy metrics from current circuit width/depth.</li>
+  <li>Least-squares noise auto-calibration with confidence score.</li>
+  <li>Bayesian calibration with user-provided prior JSON and posterior intervals.</li>
+  <li>Calibration snapshots: select/apply/clear historical calibration sets.</li>
+  <li>Randomized Benchmarking (1-qubit) with fit and estimated per-gate error.</li>
+  <li>Process tomography proxy mapping axis inputs to output Bloch vectors.</li>
+  <li>Noise-aware circuit suggestions generator.</li>
+</ul>
+<h4>In plain language</h4>
+<p>This is the diagnostics lab. It helps you understand whether your quantum setup is trustworthy and how to improve it.</p>
+
+<h3>4.12 Toy QAOA Tab</h3>
+<h4>Technical details</h4>
+<p>The tab has two layers:</p>
+<ul>
+  <li><b>Layer A: Full QAOA mini-lab (`qaoa_scenario1.render_qaoa_tab`)</b>
+    <ul>
+      <li>Backend mode selection (classical, sampler stub, aer stub).</li>
+      <li>Portfolio universe selection (toy 3-asset vs Lachesis 5-asset benchmark).</li>
+      <li>Regime overlays (baseline, bull, bear, shock) modify mu/cov.</li>
+      <li>Hyperparameters: depth, shots, risk-aversion lambda.</li>
+      <li>Persona buttons set lambda presets (Conservative/Balanced/Aggressive).</li>
+      <li>Run pipeline logs both classical baseline and selected backend results.</li>
+      <li>Result cards: energy, return, variance, objective, bitstring, selected assets.</li>
+      <li>Lachesis narrative generation from current run.</li>
+      <li>Export stance snapshot to `qaoa_snapshot.json` for foresight/risk tabs.</li>
+      <li>Uplift analytics vs classical across logged runs and overlapping lambdas.</li>
+      <li>Lambda sweep plotting and interpretation.</li>
+      <li>Portfolio summary including mu/sigma/correlation and asset class mix.</li>
+      <li>Scenario library: save/load scenarios, compare two scenarios, storyline chart.</li>
+    </ul>
+  </li>
+  <li><b>Layer B: Additional in-file stub controls (`qtbn_simulator_clean.py`)</b>
+    <ul>
+      <li>Displays toy portfolio config JSON.</li>
+      <li>Runs local stub optimizer and stores `qaoa_last_result`.</li>
+      <li>Computes crash index heuristic and exports another stance snapshot flow.</li>
+      <li>Maps lambda to persona and crash index to regime for QTBN handoff.</li>
+    </ul>
+  </li>
+</ul>
+<h4>In plain language</h4>
+<p>This tab is where the app builds a "risk stance" using QAOA-like portfolio selection logic and passes that stance into broader risk forecasting.</p>
+
+<h3>4.13 Sentiment Analysis Tab</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>Sentiment source selection:
+    <ul>
+      <li>Google News RSS + VADER</li>
+      <li>Perplexity API live-web sentiment</li>
+    </ul>
+  </li>
+  <li>Perplexity path includes model input and key-status caption, and uses structured JSON extraction with fallback to RSS mode on failure.</li>
+  <li>Stores `sentiment_multiplier` in session and applies later in Financial Analysis calculations.</li>
+  <li>Shows scored headlines and copy-friendly links.</li>
+  <li>Manual multiplier override available.</li>
+  <li>Lachesis sentiment explainer panel supports pasted links/headlines, optional OpenAI mode, voice playback, and local fallback.</li>
+</ul>
+<h4>In plain language</h4>
+<p>This tab turns market news tone into a simple dial that can increase or decrease downside risk estimates.</p>
+
+<h3>4.14 Prompt Studio Tab</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>Template management:
+    <ul>
+      <li>Create new templates (name/description/system prompt/user template/variable map/few-shots)</li>
+      <li>Edit existing templates</li>
+      <li>Update, duplicate, delete</li>
+      <li>Export/import all templates as JSON</li>
+    </ul>
+  </li>
+  <li>Runtime panel:
+    <ul>
+      <li>Select model, temperature, max tokens</li>
+      <li>Auto-collect variable values from live app session</li>
+      <li>Optional runtime overrides JSON</li>
+      <li>Render final prompt preview</li>
+      <li>Execute via `_studio_run_openai_chat` with resolved OpenAI key</li>
+      <li>Display response, raw meta, and optional voice playback</li>
+    </ul>
+  </li>
+</ul>
+<h4>In plain language</h4>
+<p>This is a custom prompt workshop. You build reusable question templates that pull live data from the app and run them on demand.</p>
+
+<h3>4.15 VQE Tab (from `vqe_tab.py`)</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>Isolated mini-lab with feature flag `VQE_TAB_ENABLED` and dedicated state keys (`vqe_*`).</li>
+  <li>Run controls:
+    <ul>
+      <li>Try real Qiskit VQE toggle</li>
+      <li>Backend choice (Estimator / AerEstimator)</li>
+      <li>Seed, ansatz, optimizer, reps, qubits, max iterations</li>
+    </ul>
+  </li>
+  <li>Smoke check controls:
+    <ul>
+      <li>Reference source (latest snapshot, manual, exact bruteforce, none)</li>
+      <li>PASS/WARN thresholds based on absolute energy delta</li>
+      <li>`exact_max_n` guardrail for bruteforce feasibility</li>
+    </ul>
+  </li>
+  <li>Problem modes:
+    <ul>
+      <li>Toy Hamiltonian</li>
+      <li>Custom Pauli Hamiltonian</li>
+      <li>MaxCut graph (with graph generator, weighted edges, visualization, Hamiltonian preview)</li>
+      <li>Ising (h vector + J couplings)</li>
+    </ul>
+  </li>
+  <li>Decode step:
+    <ul>
+      <li>Attempts to decode bitstring distribution from optimized VQE parameters</li>
+      <li>Supports auto/statevector/aer/probability sampling modes</li>
+      <li>Reports expected and best decoded objective plus top-K outcomes</li>
+    </ul>
+  </li>
+  <li>Execution flow:
+    <ul>
+      <li>Build problem Hamiltonian</li>
+      <li>Try real VQE; fallback to toy energy model if unavailable</li>
+      <li>Convert energy to risk-budget multiplier [0.5, 1.5]</li>
+      <li>Compute smoke object (PASS/WARN/FAIL)</li>
+      <li>Persist `vqe_snapshot` and `vqe_smoke` in session and optionally on disk</li>
+      <li>Save artifacts to `golden_build/vqe_snapshot_*.json` and `vqe_smoke_*.json`</li>
+    </ul>
+  </li>
+  <li>Step 8.8 risk gate bridge:
+    <ul>
+      <li>Scales base risk limits by current VQE multiplier</li>
+      <li>Stores `vqe_scaled_risk_limits`</li>
+      <li>Simulates gate decisions (APPROVED/CLAMPED/REJECTED)</li>
+    </ul>
+  </li>
+  <li>Step 8.9 execution wiring:
+    <ul>
+      <li>Pipeline pattern: estimate risk -> smoke policy -> risk gate -> execute -> audit</li>
+      <li>Supports smoke policy modes (Moderate/Strict/Off), WARN tighten factor, FAIL block/clamp behavior</li>
+      <li>`submit_order_through_vqe_gate` acts as single integration wrapper for real trade buttons</li>
+      <li>Maintains bounded `trade_audit_log` and optional audit JSON disk writes</li>
+    </ul>
+  </li>
+  <li>Diagnostics/export:
+    <ul>
+      <li>Convergence view from callback history</li>
+      <li>Ansatz draw preview</li>
+      <li>Snapshot JSON display/download</li>
+      <li>Load latest snapshot/smoke from disk into session</li>
+      <li>Current bridge signal viewer (`vqe_risk_signal`)</li>
+      <li>Trade audit log viewer and clear action</li>
+    </ul>
+  </li>
+</ul>
+<h4>In plain language</h4>
+<p>The VQE tab is the advanced optimization and risk-gating engine. It transforms VQE outcomes into stricter or looser trading limits and gives you a full simulated approval pipeline before real execution.</p>
+
+<h3>4.16 Admin Tab (owner only)</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>Only rendered when `is_owner_user()` is true.</li>
+  <li>Provides password-masked session override fields for:
+    <ul>
+      <li>OpenAI</li>
+      <li>FRED</li>
+      <li>Perplexity</li>
+      <li>Voice OpenAI</li>
+      <li>Voice ElevenLabs</li>
+    </ul>
+  </li>
+  <li>Each row shows effective configured/missing status from resolver (not raw secret source details).</li>
+  <li>Clear button wipes all owner session key overrides.</li>
+</ul>
+<h4>In plain language</h4>
+<p>This is the private key-management tab for the owner account. Non-owner users never see it.</p>
+
+<h2>5) Cross-Tab Data Flows</h2>
+
+<h3>5.1 QAOA -> QTBN/Financial/Foresight</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>QAOA exports stance to `qaoa_snapshot.json`.</li>
+  <li>Foresight/Financial/Guide load this snapshot to seed priors: regime, risk-on probability, drift, persona.</li>
+</ul>
+<h4>In plain language</h4>
+<p>Portfolio stance discovered in QAOA becomes the starting mindset for downstream risk analysis tabs.</p>
+
+<h3>5.2 Sentiment -> Financial Risk</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>Sentiment tab writes `sentiment_multiplier`.</li>
+  <li>Financial tab multiplies VaR/CVaR by this factor before dollar conversion.</li>
+</ul>
+<h4>In plain language</h4>
+<p>News mood can make estimated risk more conservative or more relaxed.</p>
+
+<h3>5.3 VQE -> Foresight and Trade Gate</h3>
+<h4>Technical details</h4>
+<ul>
+  <li>VQE writes `vqe_snapshot`, `vqe_smoke`, `vqe_risk_signal`, and scaled limits.</li>
+  <li>Foresight merged build status includes VQE smoke status.</li>
+  <li>Main VQE trade block calls `submit_order_through_vqe_gate` to enforce limits before execution.</li>
+</ul>
+<h4>In plain language</h4>
+<p>VQE acts like a risk governor. It can tighten what trades are allowed if model confidence drops.</p>
+
+<h2>6) Files, Artifacts, and Persistence</h2>
+
+<h3>6.1 Runtime/User Data Files</h3>
+<ul>
+  <li>`auth_users.json` - local failover auth store (salted hashes).</li>
+  <li>`.qtbn.toml` - persisted non-sensitive UI settings.</li>
+  <li>`qaoa_snapshot.json` - latest QAOA stance snapshot.</li>
+  <li>`qaoa_runs_log.csv` - QAOA run log history.</li>
+  <li>`qaoa_scenarios.json` - saved QAOA scenarios.</li>
+  <li>`scenarios.json` - repository scenario store for foresight hooks.</li>
+  <li>`golden_build/*.json` - VQE snapshots, smoke results, fixtures, and bridge artifacts.</li>
+</ul>
+
+<h3>6.2 API and External Integrations</h3>
+<ul>
+  <li>OpenAI: chat/explainer, screenshot extraction, OpenAI TTS.</li>
+  <li>Perplexity: live-web sentiment analysis.</li>
+  <li>FRED: macro indicators (CPI, unemployment, 10Y yield).</li>
+  <li>SEC EDGAR: insider filings feed.</li>
+  <li>Supabase: primary auth provider.</li>
+  <li>Qiskit stack: optional quantum algorithm/simulation components.</li>
+</ul>
+
+<h3>6.3 Failure/Fallback Strategy</h3>
+<ul>
+  <li>Missing API keys -> user-friendly "missing/configure" status and local fallback where available.</li>
+  <li>Missing optional dependencies -> disables related features and surfaces warnings.</li>
+  <li>Network/API failures -> catches exceptions and falls back to synthetic/local alternatives when designed.</li>
+  <li>VQE real run failure -> toy fallback still emits usable artifacts.</li>
+  <li>FRED unavailable -> simulated macro bundle.</li>
+  <li>Supabase unavailable -> local auth store.</li>
+</ul>
+
+<h2>7) Practical User Journeys</h2>
+
+<h3>7.1 Quantum-to-Risk Workflow</h3>
+<ul>
+  <li>Configure circuit and noise in sidebar.</li>
+  <li>Validate with Statevector/Measurement/Fidelity.</li>
+  <li>Run QAOA stance and export snapshot.</li>
+  <li>Open Foresight to see prior mapping and build status.</li>
+  <li>Run Financial Analysis for VaR/CVaR and narrative output.</li>
+</ul>
+
+<h3>7.2 Risk Governance Workflow (VQE)</h3>
+<ul>
+  <li>Run VQE and generate smoke/snapshot artifacts.</li>
+  <li>Review multiplier and scaled limits in Step 8.8.</li>
+  <li>Validate full submit path in Step 8.9 with audit logs.</li>
+  <li>Use same wrapper in production trade button integration.</li>
+</ul>
+
+<h3>7.3 Owner Operations Workflow</h3>
+<ul>
+  <li>Sign in as owner email.</li>
+  <li>Open Admin tab and set session key overrides as needed.</li>
+  <li>Verify status captions across tabs show configured state.</li>
+  <li>Log out to clear identity and session key overrides.</li>
+</ul>
+
+<h2>8) Extension Points for Future Development</h2>
+<ul>
+  <li>Replace QAOA stubs with full hardware/simulator backends.</li>
+  <li>Wire repo scenario save/reload buttons in foresight to active persistence layer.</li>
+  <li>Replace placeholder order-risk estimator in VQE submit pipeline with live QTBN VaR/CVaR adapter.</li>
+  <li>Harden compliance and audit storage for production execution environments.</li>
+  <li>Add unit and integration tests for gate policies and API fallback behavior.</li>
+</ul>
+
+<h2>9) Final Summary (Layman)</h2>
+<p>Lachesis is a unified quantum + finance analysis app. The sidebar configures your experiment and risk model. Tabs progressively move from raw quantum behavior, to scenario and market risk views, to explainability and governance. QAOA provides stance priors, sentiment adjusts risk intensity, and VQE provides a formal risk gate path for execution control. Owner-only Admin controls keep API key entry private while still allowing non-owner users to operate the app through backend-managed credentials.</p>
+
+<p class="small muted">End of document.</p>
+
+</body>
+</html>

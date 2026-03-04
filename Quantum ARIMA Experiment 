@@ -1,0 +1,108 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from statsmodels.tsa.arima.model import ARIMA
+
+# ----- 1. Create a synthetic time series (or replace with your real data) -----
+np.random.seed(0)
+
+T = 200  # length of series
+eps = np.random.normal(0, 1, size=T)
+data = np.zeros(T)
+phi = 0.7
+
+for t in range(1, T):
+    data[t] = phi * data[t-1] + eps[t]  # AR(1) just for demo
+
+# ----- 2. Fit a simple ARIMA model -----
+# You can change order=(p,d,q) if you want
+model = ARIMA(data, order=(1,0,0))   # AR(1) for this synthetic example
+fit = model.fit()
+
+# In-sample ARIMA predictions
+arima_pred = fit.fittedvalues  # same length as data, starts from t=1
+
+# Residuals: actual - ARIMA prediction
+residuals = data[1:] - arima_pred[1:]   # skip the very first where prediction may be NaN
+
+print("Residuals shape:", residuals.shape)
+plt.plot(residuals)
+plt.title("ARIMA residuals")
+plt.show()
+from qiskit import QuantumCircuit, Aer, execute
+from scipy.optimize import minimize
+
+# Use Qiskit's qasm simulator
+backend = Aer.get_backend('qasm_simulator')
+
+# ----- 3. Prepare training data from residuals -----
+# X_t = r_t, y_t = r_{t+1}
+X = residuals[:-1]
+y = residuals[1:]
+
+# Simple train/test split (for playing)
+split = int(0.8 * len(X))
+X_train, X_test = X[:split], X[split:]
+y_train, y_test = y[:split], y[split:]
+
+# We'll map probability p in [0,1] to residual range [y_min, y_max]
+y_min, y_max = y_train.min(), y_train.max()
+res_range = y_max - y_min if y_max != y_min else 1.0
+def build_qc(x, params):
+    """
+    x      : scalar input (residual r_t)
+    params : array-like of 2 parameters [theta0, theta1]
+    """
+    theta0, theta1 = params
+
+    qc = QuantumCircuit(1, 1)
+
+    # --- Feature encoding ---
+    # Residuals are small; we just scale them into an angle.
+    # You can tune the scaling factor if needed.
+    scale = 2.0   # hyperparameter
+    qc.ry(scale * float(x), 0)
+
+    # --- Variational ansatz (2 parameters on same qubit) ---
+    qc.rz(theta0, 0)
+    qc.ry(theta1, 0)
+
+    # Measure
+    qc.measure(0, 0)
+    return qc
+def circuit_output_prob(x, params, shots=1024):
+    """
+    Run circuit and return probability of measuring '1'.
+    """
+    qc = build_qc(x, params)
+    job = execute(qc, backend=backend, shots=shots)
+    result = job.result()
+    counts = result.get_counts()
+    p1 = counts.get('1', 0) / shots
+    return p1
+
+def predict_residual(x, params):
+    """
+    Map probability p1 in [0,1] to residual in [y_min, y_max].
+    """
+    p1 = circuit_output_prob(x, params)
+    y_hat = y_min + p1 * res_range
+    return y_hat
+
+def loss_fn(params):
+    preds = np.array([predict_residual(xi, params) for xi in X_train])
+    return np.mean((preds - y_train)**2)
+
+# Random init for 2 parameters
+np.random.seed(42)
+init_params = np.random.uniform(0, 2*np.pi, size=2)
+
+res = minimize(
+    loss_fn,
+    init_params,
+    method='Nelder-Mead',
+    options={'maxiter': 80, 'disp': True}
+)
+
+best_params = res.x
+print("Best params:", best_params)
+print("Training MSE:", res.fun)

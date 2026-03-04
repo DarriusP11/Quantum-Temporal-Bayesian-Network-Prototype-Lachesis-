@@ -1,0 +1,9 @@
+{
+  "Agressive TECH": {
+    "portfolio_choice": "Toy 3-asset tech portfolio",
+    "backend_choice": "Classical brute-force",
+    "depth": 1,
+    "shots": 1024,
+    "lam": 1.6
+  }
+}

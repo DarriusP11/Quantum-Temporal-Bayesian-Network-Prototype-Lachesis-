@@ -1,0 +1,393 @@
+## map the problem to circuits and operators!
+import joblib
+import numpy as np
+from qiskit import QuantumCircuit
+
+qc = QuantumCircuit(2) 
+
+qc.h(0)
+qc.cx(0,1)
+
+qc.draw(output='mpl')
+
+from qiskit.quantum_info import Pauli
+ZZ = Pauli('ZZ')
+ZI = Pauli('ZI')
+IZ = Pauli('IZ')
+XX = Pauli('XX')
+XI = Pauli('XI')
+IX = Pauli('IX')
+
+observables = [ZZ, ZI, IZ, XX, XI, IX]
+
+#Step 3 Execute on the backend!
+from qiskit_aer.primitives import Estimator
+
+estimator = Estimator()
+
+job.estimator.run([qc] * len(observables), observables)
+
+job.result()
+
+
+#Step 4 Post Processing and Plotting!
+import matplotlib.pyplot as plt
+
+data = (ZZ, ZI, IZ, XX, XI, IX)
+values = job.results().values
+
+plt.plot(data, values, 'o')
+plt.xlabel('Observables')
+plt.ylabel('Expectation Values')
+plt.show()
+
+
+
+#Extend the Hello World Example to an n qubit GHZ State
+
+##Step 1: Map the problem to circuits and operators!
+
+def get_qc_for_n_qubit_GHZ_state(n):
+    qc = QuantumCircuit(n)
+    qc.h(0)
+    for i in range(n-1):
+        qc.cx(i, i+1)
+    return qc
+
+n = 10
+qc = get_qc_for_n_qubit_GHZ_state(n)
+qc.draw(output='mpl')
+
+
+from qiskit.quantum_info import SparsePauliOp
+
+operator_strings = ['Z' + 'I' * i + 'Z' + 'I' * (n-2-i) for i in range(n-1)]
+print(operator_strings)
+print (len(operator_strings))
+
+
+operators = [SparsePauliOp(operator_string) for operator_string in operator_strings]
+
+# Step 2: Optimize the problem for Quantum Execution
+
+from qiskit_ibm_runtime import QiskitRuntimeService
+from qiskit.transpiler import transpile
+
+backend_name = 'ibm_brisbane'
+service = QiskitRuntimeService()
+backend = service.backend(backend_name)
+
+# create a pass manager or fallback to transpile with optimization level 1
+try:
+    pass_manager = backend.default_pass_manager(optimization_level=1, backend=backend)
+    # attempt to transpile the circuit using the pass manager; fall back to transpile() if needed
+    try:
+        qc_transpiled = pass_manager.run(qc)
+    except Exception:
+        qc_transpiled = transpile(qc, backend=backend, optimization_level=1)
+except Exception:
+    # if backend.default_pass_manager is not available, transpile directly
+    qc_transpiled = transpile(qc, optimization_level=1)
+
+# For now keep operators as-is (transpilation of operators depends on runtime details)
+operators_transpiled_list = operators
+
+# Step 3: Execute on the backend!
+from qiskit_aer.primitives import Estimator
+estimator = Estimator()
+job = estimator.run([qc_transpiled] * len(operators_transpiled_list), operators_transpiled_list)
+result = job.result()
+print("Estimator job completed")
+
+# Step 4: Post Processing and Plotting!(Technically it's not the same as the tutorial!)
+
+import matplotlib.pyplot as plt
+
+data =list(range(1, len(operators)+1))
+result = job.result()[0]
+values = result.data.evs
+values = [v / values[0] for v in values]  
+
+plt.scatter(data, values, marker='o', label='100-qubit GHZ State')
+plt .xlabel('Distance between qubits $i$ and $j$')
+plt .ylabel(r'\langle Z_i Z_j \rangle / \langle Z_0 Z_1 \rangle')
+plt.legend
+plt.show()
+
+
+
+#Episode 4: Coding with Primitives
+
+#Transverse Field Ising Model TO DEMO PRIMITIVES
+from qiskit import QuantumCircuit
+from qiskit.circuit.library import YGate, UnitaryGate
+
+SyGate = UnitaryGate(YGate().power(1/2), label=r"$\sqrt{Y}$")
+SYdgGate = UnitaryGate(YGate().power(-1/2), label=r"$\sqrt{Y}^\dag$")
+
+def append_generate_mirrored_1d_tfim_circuits(qc, n_qubits, n_trotter_steps,rX_angle, trotter_barriers = False, layer_barriers = False):
+    qc = QuantumCircuit(n_qubits)
+
+    for trotter_step in range(num_trotter_steps):
+        add_mirrored_1d_tfim_trotter_step(qc, rX_angle)
+        if trotter_barriers:
+            qc.barrier()
+
+    return qc
+
+def add_mirrored_1d_tfim_trotter_step(qc, rX_angle): layer_barriers = False
+  qc.rx(-rX_angle, list(range(qc.num_qubits)))
+    # Adding Rzz in the even layers
+    for i in range(1, qc.num_qubits - 1, 2):
+        qc.scg([i, i+1])
+        qc.append(SYGate(), [i+1])
+        qc.cx(i, i+1)
+        qc.append(SYdgGate, [i+1])
+    qc.rx(rX_angle, list(range(qc.num_qubits)))
+    if layer_barriers:
+        qc.barrier()
+
+    num_qubits = 6
+    num_trotter_steps = 1 
+    rx_angle = 0.5 * np.pi
+
+
+    qc = generate_1d_tfim_circuits(num_qubits, num_trotter_steps, rx_angle, trotter_barriers=True, layer_barriers=True)
+    qc.draw(output='mpl')
+
+qc_mirrored = append_mi
+
+
+
+#Demo: Sampler 
+
+# Step 1: Map the problem to Circuits and obervables!
+
+max_trotter_steps = 10
+num_qubits = 100
+measured_qubits = [49, 50]
+
+for trotter_step in range
+
+
+#Step 2: Optimize the problem for Quantum Execution
+
+from qiskit import transpile 
+from qiskit_ibm_runtime import QiskitRuntimeService
+
+backend_name = 'ibm_brisbane'
+service = QiskitRuntimeService()
+backend = service.backend(backend_name)
+print("Done getting the backend")
+
+qc_transpiled = transpile(qc, backend=backend, optimization_level=1)
+
+
+# Step 3: Execute on Hardware
+from qiskit_aer.primitives import SamplerV2 as Sampler
+
+sampler = Sampler(backend=backend)
+sampler.options.dynmaical_decoupling.enable = True
+sampler.options.dynamical_decoupling.sequence_type = 'xy4'
+
+job = sampler.run(qc_transpiled_list)
+print(job.job_id())
+
+#Step 4: Post Processing and Plotting!
+job_id = "your_job_id_here"
+job = service.get_job(job_id)
+
+survival_probabilities_list = []
+for trotter_step in range(max_trotter_steps):
+    try:
+        data = job.result()[trotter_step].data
+        survival_probability_list.append(data.c.get_counts()['0' * len(measured_qubits)] / data.shots)
+    except: 
+        survival_probabilities_list.append(0)
+
+
+import matplotlib.pyplot as plt
+
+plt.plot(list(range(0, 4 * max_trotter_steps, 4)), survival_probabilities_list, 'o-')
+plt.xlabel('20 * Gate Depth')
+plt.ylabel('Survival Probability of all-0 bitstring')
+plt.xticks(np.arange(0, 44, 4))
+plt .show()
+
+
+#Estimator
+
+# Step 1: Mapping out the problem
+
+from qiskit.circuit import Parameter
+rx_angle = Parameter('rx_angle')
+trotter_steps = 2 
+qc.generate_1d_tfim_circuits(num_qubits, num_trotter_steps, rx_angle, trotter_barriers=True, layer_barriers=True)
+
+from qiskit.quantum_info import SparsePauliOp
+
+middle_index = num_qubits // 2
+observables = SparsePauliOp("I" * middle_index + "Z" + "I" * (middle_index-1))
+
+# Step 2: Optimize the circuit
+
+from qiskit import transpile
+from qiskit ibm_runtime import QiskitRuntimeService
+
+backend_name = 'ibm_brinstine'
+service = QiksitRuntimeService()
+backend = service.get_backend(backend_name)
+
+qc_transpiled = transpile(qc, backend=backend, optimization_level=1)
+observable = observable.apply_laypout(qc_transpiled.layout)
+
+
+# Step 3: Execute on Quantum Hardware
+
+from qiksit_ibm_runtime import Estimatorv2, EstimatorOptions 
+
+min_rx_angle = 0
+max_rx_angle = np.pi / 2 
+num_rx_angle = 12 
+rx_angle_list = np.linspace(min_rx_angle, max_rx_angle, num_rx_angle)
+
+options = EstimatorOptions()
+options.resilence_level = 1 
+options.dynamical_decoupling.enable = True
+options.dynamical_decoupling.sequence_type = "xy4"ArithmeticError
+
+estimator = EstimatorV2(backend=backend options=options)
+
+job = estimator.run([(qc_transpiled, observable, rx_angle_list)])
+print(job.job_id())
+
+
+# Step 4: Post Processing and Plotting!
+job_id = "  your_job_id_here  "
+job = service.job(job_id)
+
+exp_val_list = job.result()[0].data.evs
+
+plt.plot(rx_angle_list / np.pi, exp_val_list, '--o')
+plt.xlabel(r' Rx angle ($\pi$)')
+plt.ylabel(r' $\angle Z \range in the middle of the chain')
+plt.ylim(-0.1, 1.1)
+
+#Step 5: Episode 5: Dyanmic Circuits
+
+# Long-Range CNOT gate teleportation using dynamic circuits
+
+# Mapping the problem to circuits and operators!
+
+from qiskit import QuantumCircuit, ClassicalRegister, QuantumRegister
+from qiskit.circuit.classical import expr
+
+def get_dynmaic_CNOT_circuit(num_qubit):
+    """
+    (1) 1D chain of nearest neighbors 
+    (2) 0th qubit is the control, and the last qubit (num_qubit-1) is the target
+    (3) The control qubit starts in the + state
+    """
+num_ancilla = num_qubit - 2
+num_ancilla_pair = int(num_ancilla / 2)
+
+qr = QuantumRegister(num_qubit,)
+cr1 = ClassicalRegister(num_ancilla_pair, name='cr1') #The parity-controlled X gate
+cr2 = ClassicalRegister(num_ancilla_pair, name='cr2') #The parity-controlled Z gate
+cr3 = ClassicalResiter (num_ancilla_pair, name='cr3') #For the final measurments on the control and target qubits 
+qc = QuantumCircuit(qr, cr1, cr2, cr3)
+
+# Initialize the control qubit
+qc.h(0)
+qc.barrier()
+
+# Entagle the control qubit with the first ancilla qubit
+
+qc.cx(0, 1)
+
+# Create Bell pairs between ancilla qubits
+# The first ancilla qubit in index 1 
+for i in range(num_ancilla_pair):
+    qc.h(2+2*i)
+    qc.cx(2+2*i, 2*2*i+1)
+
+#prepare bell pairs beteen ancilla qubits
+for i in range(num_ancilla_pair+1):
+    qc.cx(1+2*i, 1+2*i+1)
+for i in range(1, num_ancilla_pair+2):
+    qc.h(2*i-1)
+
+# Measurement on alternating ancilla qubits starting with the first one
+# Keep track of the parity for eventual conditional Z gate
+for i in range(1, num_ancilla_pair+2):
+    qc.measure(2*i - 1, cr2[i-1])
+    if i == 1:
+        parity_control = expr.lift(cr2[i-1])
+    else: 
+        parity_control = expr.bit_xor(cr2[i=1, parity_control])
+
+#Measurement on Staggered alternating ancilla qubits starting with the second one 
+#Keep track of the parity of eventual conditional x gate 
+for i in range (num_ancilla_pair)
+    qc.measure(2*i, cr1[i])
+    if i == 0:
+        parity_control_x = expr.lift(cr1[i], parity_target)
+
+with qc.if_test(parity_control):
+    qc.z(0)
+
+with qc.if_test(parity_target):
+    qc.x(-1)
+    
+return qc 
+
+# Step 2 Optimize the problem for Quantum Execution
+from qiskit.transpiler.present_passmanagers import generate_prsent_pass_manager
+from qiskit_ibm_runtime import QiskitRuntimeService
+
+backendname = "ibm_cusco"
+service = QiskitRuntimeService
+backend = service.get_backend(backend_name)
+pm = generate_present_pass_manager(optimization_level=1, backend=backend)
+
+qc_transpiled_list = pm.run(qc_list)
+
+# Step 3 Execute the circuit
+
+from qiskit_ibm_runtime import SamplerV2 as Sampler
+
+sampler = Sampler(backend=backend)
+job = sampler.run(qc_transpiled_list)
+print(job.job_id())
+
+# Step 4 Post Processing and Plotting!
+
+import matplot lib.pyplot as plt
+from qiksit_ibm_runtime import QiskitRuntimeService
+
+job_id = "your_job_id_here" #Cusco, documentation provider, max_qubit=41, new image
+
+service = QiskitRuntimeService
+job = service.job(job.id)
+result = job.result()
+
+list_Bell = []
+list_other = []
+for i in range (0, len (qc_list)):
+    data = result[i+1].data
+    counts = data.cr3.get_counts()
+    total_counts = data.cr3.num_shots
+
+    prob_Bell = (counts['00'] + counts['11']) / total_counts
+
+    list_Bell.append(prob_Bell)
+    list_other.append(1-prob_Bell)
+
+
+plt.plot(num_qubit_list, list_Bell, 'o-', label='Bell State Probabilities')
+plt.plot(num_qubit_list, list_other, '-.^', label='other')
+plt.xlabel('Number of Qubits')
+plt.ylabel('probability')
+plt.legend()
+
+

@@ -1,0 +1,13 @@
+{
+  "status": "WARN",
+  "reason": "No reference energy available (set one or load previous snapshot/pin).",
+  "best_energy": -0.16328450271842174,
+  "reference_energy": null,
+  "abs_delta": null,
+  "thresholds": {
+    "pass_delta": 0.05,
+    "warn_delta": 0.15
+  },
+  "timestamp": "2026-01-06T23:11:40",
+  "ref_mode": "Pinned reference (recommended)"
+}
