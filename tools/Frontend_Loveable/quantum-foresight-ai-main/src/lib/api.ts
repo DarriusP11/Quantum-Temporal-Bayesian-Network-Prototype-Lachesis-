@@ -33,6 +33,19 @@ export interface HealthResponse {
 }
 export const apiHealth = () => get<HealthResponse>("/api/health");
 
+// ─── Web Search (SerpAPI) ─────────────────────────────────────────────────────
+export interface SearchResult {
+  title: string;
+  snippet: string;
+  link: string;
+}
+export interface SearchResponse {
+  results: SearchResult[];
+  query: string;
+}
+export const apiWebSearch = (query: string, serpapi_key: string, num_results = 8) =>
+  post<SearchResponse>("/api/search", { query, serpapi_key, num_results });
+
 // ─── Quantum Simulation ───────────────────────────────────────────────────────
 export interface GateStep {
   q0?: string;

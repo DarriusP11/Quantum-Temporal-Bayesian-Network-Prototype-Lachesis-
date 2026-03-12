@@ -33,6 +33,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173",
         "http://localhost:8080", "http://127.0.0.1:8080",
+        "http://localhost:8082", "http://127.0.0.1:8082",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -184,6 +185,45 @@ def health():
             "qtbn_core": _HAS_QTBN_CORE,
         },
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# WEB SEARCH (SerpAPI)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class SearchRequest(BaseModel):
+    query: str
+    serpapi_key: str
+    num_results: int = 8
+
+
+@app.post("/api/search")
+def web_search(req: SearchRequest):
+    import requests as _req
+    if not req.serpapi_key.strip():
+        raise HTTPException(400, "SerpAPI key required")
+    params = {
+        "q": req.query,
+        "api_key": req.serpapi_key,
+        "num": req.num_results,
+        "engine": "google",
+        "gl": "us",
+        "hl": "en",
+        "tbs": "qdr:m",  # results from the past month only
+    }
+    r = _req.get("https://serpapi.com/search.json", params=params, timeout=12)
+    if not r.ok:
+        raise HTTPException(r.status_code, f"SerpAPI error: {r.text[:200]}")
+    data = r.json()
+    results = [
+        {
+            "title": item.get("title", ""),
+            "snippet": item.get("snippet", ""),
+            "link": item.get("link", ""),
+        }
+        for item in data.get("organic_results", [])[:req.num_results]
+    ]
+    return {"results": results, "query": req.query}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

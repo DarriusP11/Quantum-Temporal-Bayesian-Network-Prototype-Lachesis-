@@ -24,6 +24,7 @@ const KEY_SPECS: KeySpec[] = [
   { service: "perplexity",  label: "Perplexity API Key",      placeholder: "pplx-...",      hint: "Real-time sentiment via Perplexity search" },
   { service: "voice_openai",label: "Voice OpenAI Key",        placeholder: "sk-...",        hint: "TTS/STT for Lachesis voice panel" },
   { service: "voice_elevenlabs", label: "ElevenLabs Key",     placeholder: "xi-...",        hint: "High-quality voice synthesis" },
+  { service: "serpapi",     label: "SerpAPI Key",             placeholder: "serpapi key...", hint: "Google search for Lachesis AI real-time market data" },
 ];
 
 type KeyStatus = "unconfigured" | "valid" | "invalid";

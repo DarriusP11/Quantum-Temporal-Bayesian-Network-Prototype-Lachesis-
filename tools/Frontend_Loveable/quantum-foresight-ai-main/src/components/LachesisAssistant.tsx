@@ -13,6 +13,7 @@ import { QuantumTemporalBayesianNetwork } from "@/lib/qtbn-engine";
 import { FinancialData } from "@/types/quantum";
 import { useAppContext } from "@/contexts/AppContext";
 import { useVoice } from "@/hooks/useVoice";
+import { apiWebSearch } from "@/lib/api";
 
 interface Message {
   id: string;
@@ -150,6 +151,13 @@ export const LachesisAssistant = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const getSerpApiKey = (): string => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("lachesis_admin_keys") || "{}");
+      return (stored.serpapi || "").trim();
+    } catch { return ""; }
+  };
+
   const callOpenAIAPI = async (
     conversationMessages: Array<{role: string; content: any}>, 
     apiKey: string
@@ -192,6 +200,23 @@ export const LachesisAssistant = () => {
                 required: ["tickers", "allocations", "totalValue"]
               }
             }
+          },
+          {
+            type: "function",
+            function: {
+              name: "search_google",
+              description: "Search Google for real-time information about stocks, markets, financial news, economic data, or any current events. Use this when the user asks about current prices, recent news, top stocks, market outlook, or any time-sensitive financial data.",
+              parameters: {
+                type: "object",
+                properties: {
+                  query: {
+                    type: "string",
+                    description: "The search query (e.g. 'top 10 stocks to buy March 2026', 'AAPL stock price today', 'S&P 500 best performers 2026')"
+                  }
+                },
+                required: ["query"]
+              }
+            }
           }
         ],
         tool_choice: "auto"
@@ -207,7 +232,7 @@ export const LachesisAssistant = () => {
     
     if (message?.tool_calls && message.tool_calls.length > 0) {
       return {
-        content: message.content || "Let me analyze your portfolio using quantum temporal analysis...",
+        content: message.content || "",
         toolCall: message.tool_calls[0]
       };
     }
@@ -407,15 +432,17 @@ Always identify yourself as "Lachesis" and be warm and conversational. Make quan
       ];
 
       const { content, toolCall } = await callOpenAIAPI(conversationMessages, apiKey);
-      
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: content,
-        timestamp: new Date()
-      };
 
-      setMessages(prev => [...prev, assistantMessage]);
+      // Only show a pre-tool message if OpenAI actually provided one (not blank)
+      if (content.trim()) {
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: content,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+      }
       
       // If AI wants to run QTBN analysis, execute it
       if (toolCall && toolCall.function.name === 'run_qtbn_analysis') {
@@ -475,6 +502,61 @@ Always identify yourself as "Lachesis" and be warm and conversational. Make quan
             timestamp: new Date()
           };
           setMessages(prev => [...prev, errorMsg]);
+        }
+      } else if (toolCall && toolCall.function.name === 'search_google') {
+        const args = JSON.parse(toolCall.function.arguments);
+        const serpApiKey = getSerpApiKey();
+
+        if (!serpApiKey) {
+          const noKeyMsg: Message = {
+            id: (Date.now() + 2).toString(),
+            role: 'assistant',
+            content: "I'd like to search for current market data to give you the most accurate answer, but no SerpAPI key is configured. Please add your SerpAPI key in the **Admin** tab, then ask again.",
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, noKeyMsg]);
+        } else {
+          const searchingMsgId = (Date.now() + 2).toString();
+          const searchingMessage: Message = {
+            id: searchingMsgId,
+            role: 'assistant',
+            content: `🔍 Searching Google for: *"${args.query}"*...`,
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, searchingMessage]);
+
+          try {
+            const { results } = await apiWebSearch(args.query, serpApiKey);
+            const searchSummary = results.length > 0
+              ? results.map((r, i) => `[${i + 1}] ${r.title}\n${r.snippet}\nSource: ${r.link}`).join("\n\n")
+              : "No results found.";
+
+            const resultsMessages = [
+              ...conversationMessages,
+              { role: 'assistant', content: content || "", tool_calls: [toolCall] },
+              { role: 'tool', tool_call_id: toolCall.id, content: searchSummary }
+            ];
+
+            const { content: finalResponse } = await callOpenAIAPI(resultsMessages, apiKey);
+            const finalMsg: Message = {
+              id: (Date.now() + 3).toString(),
+              role: 'assistant',
+              content: finalResponse,
+              timestamp: new Date()
+            };
+            setMessages(prev => prev.filter(m => m.id !== searchingMsgId).concat(finalMsg));
+
+            if (voiceEnabled) await speakText(finalResponse);
+          } catch (searchErr) {
+            console.error('SerpAPI search failed:', searchErr);
+            const errMsg: Message = {
+              id: (Date.now() + 3).toString(),
+              role: 'assistant',
+              content: `Search failed: ${searchErr instanceof Error ? searchErr.message : String(searchErr)}. I'll answer based on my training data instead.\n\n${content}`,
+              timestamp: new Date()
+            };
+            setMessages(prev => prev.filter(m => m.id !== searchingMsgId).concat(errMsg));
+          }
         }
       } else if (voiceEnabled) {
         await speakText(content);
