@@ -262,3 +262,6 @@ timestamp,portfolio,backend,depth_p,shots,lambda,bitstring,selected_assets,expec
 2026-02-27 01:33:10,"QAOA (Aer Sampler) (no qiskit-optimization, classical fallback)",1.6000,11111,AAPL|MSFT|QQQ|TLT|GLD,0.003602,0.002593,0.007319,-0.007319,1024,
 2026-03-03 14:41:59,Classical brute-force,0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,classical_baseline
 2026-03-03 14:41:59,"QAOA (Aer Sampler) (no qiskit-optimization, classical fallback)",0.8000,11101,AAPL|MSFT|QQQ|GLD,0.003615,0.002551,0.002382,-0.002382,1024,user_backend
+2026-03-07 15:05:36,"QAOA (Aer Sampler) (no qiskit-optimization, classical fallback)",0.6000,110,AAPL|MSFT,0.220000,0.146000,0.073600,-0.073600,1024,
+2026-03-07 15:20:02,Classical brute-force,1.0000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.300000,-0.300000,1024,
+2026-03-12 15:32:44,Classical brute-force,1.0000,111,AAPL|MSFT|GOOG,0.300000,0.283000,0.300000,-0.300000,1024,
