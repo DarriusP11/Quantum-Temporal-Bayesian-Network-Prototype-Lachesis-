@@ -8,6 +8,10 @@ interface AuthGuardProps {
 }
 
 const AuthGuard = ({ children }: AuthGuardProps) => {
+  // AUTH TEMPORARILY DISABLED — restore by removing this early return
+  return <>{children}</>;
+
+  /* eslint-disable react-hooks/rules-of-hooks */
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
@@ -35,7 +39,7 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
   }
 
   if (!user) {
-    return null; // Will redirect to auth page
+    return null;
   }
 
   return <>{children}</>;
