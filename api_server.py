@@ -30,11 +30,7 @@ app = FastAPI(title="Lachesis API", version="1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173",
-        "http://localhost:8080", "http://127.0.0.1:8080",
-        "http://localhost:8082", "http://127.0.0.1:8082",
-    ],
+    allow_origins=["*"],  # open to all origins (Vercel + local)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
