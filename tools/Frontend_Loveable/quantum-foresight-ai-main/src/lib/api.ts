@@ -25,6 +25,10 @@ export function get<T>(path: string): Promise<T> {
   return request<T>(path, { method: "GET" });
 }
 
+// ─── Auth (admin signup via backend) ─────────────────────────────────────────
+export const apiSignUp = (email: string, password: string, display_name: string) =>
+  post<{ success: boolean }>("/api/auth/signup", { email, password, display_name });
+
 // ─── Health ──────────────────────────────────────────────────────────────────
 export interface HealthResponse {
   status: string;

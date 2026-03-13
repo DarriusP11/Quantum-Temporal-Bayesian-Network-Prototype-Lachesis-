@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { apiSignUp } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -122,52 +123,46 @@ const Auth = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!validateForm(true)) return;
-
     setIsLoading(true);
-    
     try {
-      const redirectUrl = `${window.location.origin}/`;
-      
-      const { error } = await supabase.auth.signUp({
+      // Create user via backend (uses service role key, bypasses signup restrictions)
+      await apiSignUp(email.trim(), password, displayName.trim());
+
+      // Immediately sign in so the user lands in the app
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            display_name: displayName.trim(),
-          }
-        }
       });
 
-      if (error) {
-        if (error.message.includes("User already registered")) {
-          toast({
-            title: "Account exists",
-            description: "An account with this email already exists. Please sign in instead.",
-            variant: "destructive",
-          });
-          setActiveTab("signin");
-        } else {
-          toast({
-            title: "Sign up failed",
-            description: error.message,
-            variant: "destructive",
-          });
-        }
-      } else {
+      if (signInError) {
         toast({
           title: "Account created!",
-          description: "Please check your email to verify your account.",
+          description: "Account created — please sign in.",
+        });
+        setActiveTab("signin");
+      } else {
+        toast({
+          title: "Welcome!",
+          description: "Your account has been created and you're signed in.",
         });
       }
-    } catch (error) {
-      toast({
-        title: "Sign up failed",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
+      if (msg.toLowerCase().includes("already registered") || msg.toLowerCase().includes("already exists")) {
+        toast({
+          title: "Account exists",
+          description: "An account with this email already exists. Please sign in instead.",
+          variant: "destructive",
+        });
+        setActiveTab("signin");
+      } else {
+        toast({
+          title: "Sign up failed",
+          description: msg,
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }

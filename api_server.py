@@ -184,6 +184,39 @@ def health():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# AUTH — admin signup (bypasses Supabase signup restrictions)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class SignupRequest(BaseModel):
+    email: str
+    password: str
+    display_name: str = ""
+
+@app.post("/api/auth/signup")
+def admin_signup(req: SignupRequest):
+    import requests as _req
+    service_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+    supabase_url = os.environ.get("SUPABASE_URL", "https://cnybbuptajissazrbmxb.supabase.co")
+    if not service_key:
+        raise HTTPException(500, "SUPABASE_SERVICE_ROLE_KEY not configured on server")
+    headers = {
+        "Authorization": f"Bearer {service_key}",
+        "apikey": service_key,
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "email": req.email,
+        "password": req.password,
+        "user_metadata": {"display_name": req.display_name},
+        "email_confirm": True,  # skip email verification step
+    }
+    r = _req.post(f"{supabase_url}/auth/v1/admin/users", json=payload, headers=headers, timeout=10)
+    if not r.ok:
+        msg = r.json().get("message", r.json().get("msg", "Signup failed"))
+        raise HTTPException(r.status_code, msg)
+    return {"success": True}
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # WEB SEARCH (SerpAPI)
 # ═══════════════════════════════════════════════════════════════════════════════
 
