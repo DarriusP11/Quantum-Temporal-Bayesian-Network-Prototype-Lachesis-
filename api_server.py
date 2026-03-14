@@ -196,7 +196,7 @@ class SignupRequest(BaseModel):
 def admin_signup(req: SignupRequest):
     import requests as _req
     service_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
-    supabase_url = os.environ.get("SUPABASE_URL", "https://cnybbuptajissazrbmxb.supabase.co")
+    supabase_url = os.environ.get("SUPABASE_URL", "https://mvprtzaatfbvdxwutrbo.supabase.co")
     if not service_key:
         raise HTTPException(500, "SUPABASE_SERVICE_ROLE_KEY not configured on server")
     headers = {
