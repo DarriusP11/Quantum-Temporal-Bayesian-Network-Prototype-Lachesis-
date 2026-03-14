@@ -15,6 +15,15 @@ import datetime as dt
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+# Load .env file if present (local dev)
+_env_path = Path(__file__).resolve().parent / ".env"
+if _env_path.exists():
+    for _line in _env_path.read_text().splitlines():
+        _line = _line.strip()
+        if _line and not _line.startswith("#") and "=" in _line:
+            _k, _v = _line.split("=", 1)
+            os.environ.setdefault(_k.strip(), _v.strip())
+
 import numpy as np
 
 # ── FastAPI ──────────────────────────────────────────────────────────────────
