@@ -230,24 +230,33 @@ export const FinancialDashboard = () => {
   const [demoMode, setDemoMode] = useState(false);
   const [useQAE, setUseQAE] = useState(false);
   const [sentimentMult, setSentimentMult] = useState("");
+  const [applyMacroStress, setApplyMacroStress] = useState(false);
+  const [unemployment, setUnemployment] = useState(4.0);
+  const [yield10y, setYield10y] = useState(4.0);
   const [isLoading, setIsLoading] = useState(false);
   const [data, setData] = useState<FinancialAnalyzeResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedPersona, setSelectedPersona] = useState<PersonaKey>("Chief Investment Officer");
+
+  const macroStressMultiplier = (() => {
+    const stress = 1.0 + 0.40 * ((unemployment - 4.0) / 4.0) + 0.20 * ((yield10y - 4.0) / 4.0);
+    return Math.min(1.8, Math.max(0.8, stress));
+  })();
 
   const analyzeMarket = async () => {
     setIsLoading(true);
     setError(null);
     try {
       const tickerList = tickers.split(',').map(t => t.trim()).filter(Boolean);
-      const mult = sentimentMult.trim() !== "" ? parseFloat(sentimentMult) : null;
+      const manualMult = sentimentMult.trim() !== "" ? parseFloat(sentimentMult) : null;
+      const mult = applyMacroStress ? macroStressMultiplier : (isNaN(manualMult as number) ? null : manualMult);
       const res = await apiFinancialAnalyze({
         tickers: tickerList,
         lookback_days: lookbackDays,
         confidence,
         simulations,
         demo_mode: demoMode,
-        sentiment_multiplier: isNaN(mult as number) ? null : mult,
+        sentiment_multiplier: mult,
         use_qae: useQAE,
       });
       setData(res);
@@ -374,7 +383,7 @@ export const FinancialDashboard = () => {
             <div>
               <Label htmlFor="sent-mult" className="text-xs">
                 Sentiment Multiplier{" "}
-                <span className="text-muted-foreground">(optional — from Sentiment tab)</span>
+                <span className="text-muted-foreground">(optional — overridden by Macro Stress)</span>
               </Label>
               <Input
                 id="sent-mult"
@@ -385,8 +394,77 @@ export const FinancialDashboard = () => {
                 onChange={e => setSentimentMult(e.target.value)}
                 placeholder="e.g. 1.12 — stresses VaR"
                 className="mt-1 h-8 text-xs"
+                disabled={applyMacroStress}
               />
             </div>
+          </div>
+
+          {/* ── Macro Stress ──────────────────────────────────────────── */}
+          <div className="border border-accent/30 rounded-lg p-4 space-y-4 bg-background/40">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="macro-stress"
+                checked={applyMacroStress}
+                onCheckedChange={(checked) => setApplyMacroStress(!!checked)}
+              />
+              <Label htmlFor="macro-stress" className="font-semibold cursor-pointer">
+                Apply Macro Stress
+              </Label>
+              <span className="text-xs text-muted-foreground ml-1">
+                — scales VaR/CVaR using unemployment & yield inputs
+              </span>
+            </div>
+
+            {applyMacroStress && (
+              <div className="space-y-4 pt-1">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs">
+                      Unemployment Rate: <span className="text-primary font-semibold">{unemployment.toFixed(1)}%</span>
+                    </Label>
+                    <Slider
+                      value={[unemployment]}
+                      onValueChange={([v]) => setUnemployment(v)}
+                      min={2.0} max={12.0} step={0.1}
+                      className="mt-2"
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                      <span>2%</span><span>Neutral: 4%</span><span>12%</span>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">
+                      10Y Treasury Yield: <span className="text-primary font-semibold">{yield10y.toFixed(1)}%</span>
+                    </Label>
+                    <Slider
+                      value={[yield10y]}
+                      onValueChange={([v]) => setYield10y(v)}
+                      min={0.5} max={10.0} step={0.1}
+                      className="mt-2"
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                      <span>0.5%</span><span>Neutral: 4%</span><span>10%</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 pt-1">
+                  <div className={`px-3 py-1.5 rounded-md text-sm font-semibold border ${
+                    macroStressMultiplier > 1.1 ? "bg-red-500/15 border-red-500/30 text-red-400"
+                    : macroStressMultiplier < 0.95 ? "bg-green-500/15 border-green-500/30 text-green-400"
+                    : "bg-yellow-500/15 border-yellow-500/30 text-yellow-400"
+                  }`}>
+                    Stress Multiplier: {macroStressMultiplier.toFixed(3)}×
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {macroStressMultiplier > 1.1
+                      ? "Elevated macro risk — VaR/CVaR scaled up"
+                      : macroStressMultiplier < 0.95
+                      ? "Benign macro conditions — VaR/CVaR scaled down"
+                      : "Near-neutral macro environment"}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           <Button onClick={analyzeMarket} disabled={isLoading} className="w-full h-12">
