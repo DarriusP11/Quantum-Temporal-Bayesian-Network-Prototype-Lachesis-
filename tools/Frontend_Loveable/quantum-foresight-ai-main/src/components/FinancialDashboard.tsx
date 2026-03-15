@@ -136,6 +136,89 @@ function PersonaView({ persona, data, portfolioValue, confidence, lookbackDays, 
   );
 }
 
+// ── Correlation matrix helpers ────────────────────────────────────────────────
+function computeCorrelationMatrix(returns: Record<string, number[]>, tickers: string[]): number[][] {
+  const means = tickers.map(t => {
+    const r = returns[t] ?? [];
+    return r.reduce((a, b) => a + b, 0) / (r.length || 1);
+  });
+  const stds = tickers.map((t, i) => {
+    const r = returns[t] ?? [];
+    const mean = means[i];
+    return Math.sqrt(r.reduce((a, b) => a + (b - mean) ** 2, 0) / (r.length || 1));
+  });
+  return tickers.map((ti, i) => tickers.map((tj, j) => {
+    if (i === j) return 1;
+    const ri = returns[ti] ?? [], rj = returns[tj] ?? [];
+    const n = Math.min(ri.length, rj.length);
+    if (n === 0 || stds[i] === 0 || stds[j] === 0) return 0;
+    const cov = ri.slice(0, n).reduce((s, _, k) => s + (ri[k] - means[i]) * (rj[k] - means[j]), 0) / n;
+    return cov / (stds[i] * stds[j]);
+  }));
+}
+
+function corrColor(v: number): string {
+  // +1 → purple, 0 → neutral, -1 → red
+  if (v >= 0) {
+    const t = v;
+    return `rgba(139,92,246,${0.15 + t * 0.75})`;   // hsl(263) purple
+  }
+  const t = -v;
+  return `rgba(239,68,68,${0.15 + t * 0.75})`;       // red
+}
+
+function CorrelationMatrix({ returns, tickers }: { returns: Record<string, number[]>; tickers: string[] }) {
+  const matrix = computeCorrelationMatrix(returns, tickers);
+  return (
+    <div className="overflow-x-auto">
+      <table className="text-xs border-collapse w-full">
+        <thead>
+          <tr>
+            <th className="p-2 text-muted-foreground font-medium text-right w-16"></th>
+            {tickers.map(t => (
+              <th key={t} className="p-2 text-center font-semibold text-foreground">{t}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {tickers.map((ti, i) => (
+            <tr key={ti}>
+              <td className="p-2 text-right font-semibold text-foreground pr-3">{ti}</td>
+              {tickers.map((tj, j) => {
+                const v = matrix[i][j];
+                return (
+                  <td
+                    key={tj}
+                    className="p-2 text-center font-mono rounded"
+                    style={{ background: corrColor(v) }}
+                    title={`${ti} × ${tj}: ${v.toFixed(4)}`}
+                  >
+                    {v.toFixed(2)}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-3 h-3 rounded" style={{ background: "rgba(139,92,246,0.9)" }} />
+          Strong positive (+1)
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-3 h-3 rounded" style={{ background: "rgba(139,92,246,0.15)" }} />
+          Weak positive
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-3 h-3 rounded" style={{ background: "rgba(239,68,68,0.9)" }} />
+          Strong negative (−1)
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export const FinancialDashboard = () => {
   const { state } = useAppContext();
   const portfolioValue = state.finance.portfolio_value;
@@ -468,6 +551,24 @@ export const FinancialDashboard = () => {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* ── Correlation Matrix ───────────────────────────────────────────────── */}
+      {data && data.tickers.length > 1 && (
+        <Card className="border-accent/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-primary" />
+              Return Correlation Matrix
+              <span className="text-sm font-normal text-muted-foreground ml-1">
+                — pairwise Pearson correlation of daily returns
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CorrelationMatrix returns={data.returns} tickers={data.tickers} />
+          </CardContent>
+        </Card>
       )}
 
       {/* ── Persona Views ────────────────────────────────────────────────────── */}
