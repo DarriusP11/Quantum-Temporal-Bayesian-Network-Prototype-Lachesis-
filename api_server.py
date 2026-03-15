@@ -741,9 +741,23 @@ def financial_analyze(req: FinancialAnalyzeRequest):
                     prices_df.columns = tickers[:1]
                 prices_df = prices_df.tail(req.lookback_days)
                 if prices_df.empty or len(prices_df) < 30:
+                    # Identify which tickers returned no data
+                    if not raw.empty and isinstance(raw.columns, pd.MultiIndex) and "Close" in raw.columns.get_level_values(0):
+                        close = raw["Close"]
+                        bad = [t for t in tickers if t not in close.columns or close[t].dropna().empty]
+                    else:
+                        bad = tickers
+                    if bad:
+                        raise HTTPException(400, f"No market data found for: {', '.join(bad)}. Check the ticker symbol(s) and try again.")
                     prices_df = None
                 else:
+                    # Check for any individual tickers with no data
+                    bad = [t for t in prices_df.columns if prices_df[t].dropna().empty]
+                    if bad:
+                        raise HTTPException(400, f"No market data found for: {', '.join(bad)}. Check the ticker symbol(s) and try again.")
                     data_source = "yfinance"
+            except HTTPException:
+                raise
             except Exception:
                 prices_df = None
 
