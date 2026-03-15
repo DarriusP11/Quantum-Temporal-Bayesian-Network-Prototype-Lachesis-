@@ -1947,6 +1947,31 @@ class AdminKeyValidateRequest(BaseModel):
     api_key: str
 
 
+@app.post("/api/fred/macro")
+def fred_macro(body: dict):
+    """Fetch live CPI, Unemployment, and 10Y Yield from FRED."""
+    api_key = (body.get("api_key") or "").strip()
+    if not api_key:
+        raise HTTPException(400, "FRED API key is required")
+    try:
+        from fredapi import Fred
+    except ImportError:
+        raise HTTPException(503, "fredapi not installed on this server")
+    try:
+        fred = Fred(api_key=api_key)
+        def _latest(series_id: str):
+            s = fred.get_series_latest_release(series_id)
+            import pandas as pd
+            return float(pd.Series(s).dropna().iloc[-1]) if s is not None and len(s) > 0 else None
+        return {
+            "cpi":          _latest("CPIAUCSL"),
+            "unemployment": _latest("UNRATE"),
+            "yield_10y":    _latest("DGS10"),
+        }
+    except Exception as e:
+        raise HTTPException(502, f"FRED fetch failed: {e}")
+
+
 @app.post("/api/admin/validate-key")
 def admin_validate_key(req: AdminKeyValidateRequest):
     """Minimal validation — checks key format only (no external calls)."""

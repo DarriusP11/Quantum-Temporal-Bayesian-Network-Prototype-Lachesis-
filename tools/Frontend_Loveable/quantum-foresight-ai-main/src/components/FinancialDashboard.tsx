@@ -12,7 +12,8 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
   AreaChart, Area, Tooltip
 } from 'recharts';
-import { TrendingUp, TrendingDown, AlertTriangle, Shield, DollarSign, BarChart3, AlertCircle, Users, Atom } from "lucide-react";
+import { TrendingUp, TrendingDown, AlertTriangle, Shield, DollarSign, BarChart3, AlertCircle, Users, Atom, RefreshCw } from "lucide-react";
+import { post } from "@/lib/api";
 
 // ── Persona view helpers ──────────────────────────────────────────────────────
 const PERSONAS = ["Chief Investment Officer", "Risk Officer", "Quant Researcher", "Client-Friendly Summary"] as const;
@@ -233,6 +234,8 @@ export const FinancialDashboard = () => {
   const [applyMacroStress, setApplyMacroStress] = useState(false);
   const [unemployment, setUnemployment] = useState(4.0);
   const [yield10y, setYield10y] = useState(4.0);
+  const [fredLoading, setFredLoading] = useState(false);
+  const [fredError, setFredError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [data, setData] = useState<FinancialAnalyzeResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -242,6 +245,28 @@ export const FinancialDashboard = () => {
     const stress = 1.0 + 0.40 * ((unemployment - 4.0) / 4.0) + 0.20 * ((yield10y - 4.0) / 4.0);
     return Math.min(1.8, Math.max(0.8, stress));
   })();
+
+  const fetchFredMacro = async () => {
+    setFredError(null);
+    try {
+      const saved = localStorage.getItem("lachesis_admin_keys");
+      const fredKey = saved ? (JSON.parse(saved) as Record<string, string>)["fred"] ?? "" : "";
+      if (!fredKey.trim()) {
+        setFredError("No FRED API key found — add it in the Admin tab first.");
+        return;
+      }
+      setFredLoading(true);
+      const res = await post<{ cpi: number | null; unemployment: number | null; yield_10y: number | null }>(
+        "/api/fred/macro", { api_key: fredKey }
+      );
+      if (res.unemployment != null) setUnemployment(res.unemployment);
+      if (res.yield_10y   != null) setYield10y(res.yield_10y);
+    } catch (e) {
+      setFredError(e instanceof Error ? e.message : "FRED fetch failed");
+    } finally {
+      setFredLoading(false);
+    }
+  };
 
   const analyzeMarket = async () => {
     setIsLoading(true);
@@ -417,6 +442,25 @@ export const FinancialDashboard = () => {
 
             {applyMacroStress && (
               <div className="space-y-4 pt-1">
+                <div className="flex items-center gap-3">
+                  <Button
+                    size="sm" variant="outline"
+                    className="h-7 text-xs border-primary/30 text-primary hover:bg-primary/10"
+                    onClick={fetchFredMacro}
+                    disabled={fredLoading}
+                  >
+                    <RefreshCw className={`w-3 h-3 mr-1 ${fredLoading ? "animate-spin" : ""}`} />
+                    {fredLoading ? "Fetching..." : "Fetch Live from FRED"}
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    Auto-fills unemployment & yield from your FRED key (Admin tab)
+                  </span>
+                </div>
+                {fredError && (
+                  <p className="text-xs text-red-400 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />{fredError}
+                  </p>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label className="text-xs">
