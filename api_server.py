@@ -2182,6 +2182,70 @@ def edgar_filings_legacy(cik: str, forms: str = "3,4,5",
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# PORTFOLIO SCREENSHOT EXTRACTION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class ScreenshotExtractRequest(BaseModel):
+    image_b64: str
+    openai_api_key: str = ""
+
+@app.post("/api/financial/extract-screenshot")
+def extract_portfolio_screenshot(req: ScreenshotExtractRequest):
+    api_key = (req.openai_api_key or os.environ.get("OPENAI_API_KEY", "")).strip()
+    if not api_key:
+        raise HTTPException(400, "OpenAI API key required for screenshot extraction — add it in the Admin tab.")
+
+    import requests as _http
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": [{
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": (
+                        "You extract brokerage/portfolio screenshot data into strict JSON only. "
+                        "Return exactly: "
+                        "{\"tickers\": [\"AAPL\", ...], \"portfolio_value\": 12345.67, "
+                        "\"positions\": [{\"ticker\": \"AAPL\", \"market_value\": 1234.56, "
+                        "\"shares\": 10.0, \"price\": 123.45}]}. "
+                        "If a field isn't visible, set it to null. Return ONLY valid JSON, no explanation."
+                    ),
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/jpeg;base64,{req.image_b64}"},
+                },
+            ],
+        }],
+        "max_tokens": 1000,
+    }
+
+    try:
+        r = _http.post("https://api.openai.com/v1/chat/completions", json=payload, headers=headers, timeout=30)
+    except Exception as e:
+        raise HTTPException(502, f"Failed to reach OpenAI: {e}")
+
+    if not r.ok:
+        raise HTTPException(r.status_code, f"OpenAI error: {r.text[:300]}")
+
+    content = r.json()["choices"][0]["message"]["content"].strip()
+    # Pull JSON out of the response (model may wrap it in markdown fences)
+    start = content.find("{")
+    end = content.rfind("}") + 1
+    if start < 0 or end <= start:
+        raise HTTPException(500, "OpenAI did not return valid JSON — try a clearer screenshot.")
+    try:
+        return json.loads(content[start:end])
+    except Exception:
+        raise HTTPException(500, "Could not parse extracted portfolio data.")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # ENTRY POINT
 # ═══════════════════════════════════════════════════════════════════════════════
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
   AreaChart, Area, Tooltip
 } from 'recharts';
-import { TrendingUp, TrendingDown, AlertTriangle, Shield, DollarSign, BarChart3, AlertCircle, Users, Atom, RefreshCw } from "lucide-react";
+import { TrendingUp, TrendingDown, AlertTriangle, Shield, DollarSign, BarChart3, AlertCircle, Users, Atom, RefreshCw, Camera, Upload, CheckCircle2 } from "lucide-react";
 import { post } from "@/lib/api";
 
 // ── Persona view helpers ──────────────────────────────────────────────────────
@@ -241,6 +241,15 @@ export const FinancialDashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedPersona, setSelectedPersona] = useState<PersonaKey>("Chief Investment Officer");
 
+  // Screenshot import state
+  const [ssExpanded, setSsExpanded] = useState(false);
+  const [ssFile, setSsFile] = useState<File | null>(null);
+  const [ssPreview, setSsPreview] = useState<string | null>(null);
+  const [ssLoading, setSsLoading] = useState(false);
+  const [ssError, setSsError] = useState<string | null>(null);
+  const [ssResult, setSsResult] = useState<{ tickers: string[]; portfolio_value: number | null; positions: { ticker: string; market_value: number | null; shares: number | null; price: number | null }[] } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const macroStressMultiplier = (() => {
     const stress = 1.0 + 0.40 * ((unemployment - 4.0) / 4.0) + 0.20 * ((yield10y - 4.0) / 4.0);
     return Math.min(1.8, Math.max(0.8, stress));
@@ -266,6 +275,56 @@ export const FinancialDashboard = () => {
     } finally {
       setFredLoading(false);
     }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setSsFile(file);
+    setSsResult(null);
+    setSsError(null);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (ev) => setSsPreview(ev.target?.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setSsPreview(null);
+    }
+  };
+
+  const analyzeScreenshot = async () => {
+    if (!ssFile) return;
+    setSsLoading(true);
+    setSsError(null);
+    setSsResult(null);
+    try {
+      const saved = localStorage.getItem("lachesis_admin_keys");
+      const openaiKey = saved ? (JSON.parse(saved) as Record<string, string>)["openai"] ?? "" : "";
+      const reader = new FileReader();
+      const b64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = (ev) => {
+          const result = ev.target?.result as string;
+          // strip the data:image/...;base64, prefix
+          resolve(result.split(",")[1] ?? result);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(ssFile);
+      });
+      const res = await post<typeof ssResult>("/api/financial/extract-screenshot", {
+        image_b64: b64,
+        openai_api_key: openaiKey,
+      });
+      setSsResult(res);
+    } catch (e) {
+      setSsError(e instanceof Error ? e.message : "Screenshot extraction failed");
+    } finally {
+      setSsLoading(false);
+    }
+  };
+
+  const applyScreenshotTickers = () => {
+    if (!ssResult?.tickers?.length) return;
+    setTickers(ssResult.tickers.join(","));
+    setSsExpanded(false);
   };
 
   const analyzeMarket = async () => {
@@ -507,6 +566,131 @@ export const FinancialDashboard = () => {
                       : "Near-neutral macro environment"}
                   </span>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Portfolio Screenshot Import ──────────────────────────── */}
+          <div className="border border-accent/30 rounded-lg bg-background/40">
+            <button
+              className="w-full flex items-center gap-2 px-4 py-3 text-sm font-semibold text-left hover:bg-accent/10 transition-colors rounded-lg"
+              onClick={() => setSsExpanded(v => !v)}
+              type="button"
+            >
+              <Camera className="w-4 h-4 text-primary" />
+              Import Portfolio from Screenshot
+              <span className="text-xs font-normal text-muted-foreground ml-1">
+                — upload a Robinhood / brokerage screenshot to auto-fill tickers
+              </span>
+              <span className="ml-auto text-muted-foreground">{ssExpanded ? "▲" : "▼"}</span>
+            </button>
+
+            {ssExpanded && (
+              <div className="px-4 pb-4 space-y-4 border-t border-accent/20 pt-4">
+                <p className="text-xs text-muted-foreground">
+                  OpenAI vision (gpt-4o-mini) reads your screenshot and extracts ticker symbols &amp; portfolio value.
+                  Your OpenAI key from the <strong>Admin tab</strong> is used automatically.
+                </p>
+
+                {/* File picker */}
+                <div className="flex items-center gap-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                  <Button
+                    size="sm" variant="outline"
+                    className="h-8 text-xs border-primary/30"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="w-3 h-3 mr-1" />
+                    {ssFile ? ssFile.name : "Choose Screenshot (.png / .jpg)"}
+                  </Button>
+                  {ssFile && (
+                    <Button
+                      size="sm"
+                      className="h-8 text-xs"
+                      onClick={analyzeScreenshot}
+                      disabled={ssLoading}
+                    >
+                      <Camera className={`w-3 h-3 mr-1 ${ssLoading ? "animate-pulse" : ""}`} />
+                      {ssLoading ? "Analyzing…" : "Extract Portfolio"}
+                    </Button>
+                  )}
+                </div>
+
+                {/* Preview thumbnail */}
+                {ssPreview && (
+                  <img
+                    src={ssPreview}
+                    alt="Screenshot preview"
+                    className="max-h-40 rounded border border-accent/30 object-contain"
+                  />
+                )}
+
+                {/* Error */}
+                {ssError && (
+                  <p className="text-xs text-red-400 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />{ssError}
+                  </p>
+                )}
+
+                {/* Results */}
+                {ssResult && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-xs text-green-400">
+                      <CheckCircle2 className="w-4 h-4" />
+                      Extraction complete
+                    </div>
+
+                    {ssResult.portfolio_value != null && (
+                      <p className="text-xs text-muted-foreground">
+                        Portfolio value detected: <span className="text-foreground font-semibold">
+                          ${ssResult.portfolio_value.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+                        </span>
+                      </p>
+                    )}
+
+                    {ssResult.positions?.length > 0 && (
+                      <div className="overflow-x-auto">
+                        <table className="text-xs border-collapse w-full">
+                          <thead>
+                            <tr className="border-b border-accent/20">
+                              <th className="text-left p-2 text-muted-foreground">Ticker</th>
+                              <th className="text-right p-2 text-muted-foreground">Shares</th>
+                              <th className="text-right p-2 text-muted-foreground">Price</th>
+                              <th className="text-right p-2 text-muted-foreground">Market Value</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {ssResult.positions.map((p, i) => (
+                              <tr key={i} className="border-b border-accent/10">
+                                <td className="p-2 font-semibold text-primary">{p.ticker}</td>
+                                <td className="p-2 text-right text-muted-foreground">{p.shares ?? "—"}</td>
+                                <td className="p-2 text-right text-muted-foreground">{p.price != null ? `$${p.price.toFixed(2)}` : "—"}</td>
+                                <td className="p-2 text-right">{p.market_value != null ? `$${p.market_value.toLocaleString("en-US", { maximumFractionDigits: 2 })}` : "—"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {ssResult.tickers?.length > 0 && (
+                      <Button
+                        size="sm"
+                        className="h-8 text-xs w-full"
+                        onClick={applyScreenshotTickers}
+                      >
+                        <CheckCircle2 className="w-3 h-3 mr-1" />
+                        Apply Tickers to Analysis ({ssResult.tickers.join(", ")})
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
