@@ -588,7 +588,7 @@ export const FinancialDashboard = () => {
             {ssExpanded && (
               <div className="px-4 pb-4 space-y-4 border-t border-accent/20 pt-4">
                 <p className="text-xs text-muted-foreground">
-                  OpenAI vision (gpt-4o-mini) reads your screenshot and extracts ticker symbols &amp; portfolio value.
+                  OpenAI vision (gpt-4.1-mini) reads your screenshot and extracts ticker symbols &amp; portfolio value.
                   Your OpenAI key from the <strong>Admin tab</strong> is used automatically.
                 </p>
 

@@ -1833,7 +1833,7 @@ def lachesis_guide(req: LachesisGuideRequest):
                 import openai
                 client = openai.OpenAI(api_key=req.openai_api_key)
                 resp = client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model="gpt-4.1-mini",
                     messages=[
                         {"role": "system", "content": f"You are Lachesis, a quantum-enhanced financial risk AI. Provide concise, actionable risk guidance. Keep responses to 2-3 paragraphs. Always respond in {req.language}."},
                         {"role": "user", "content": f"Context: {context}\n\nQuestion: {req.question}"},
@@ -1921,7 +1921,7 @@ def prompt_studio_generate(req: PromptStudioRequest):
                 import openai
                 client = openai.OpenAI(api_key=req.openai_api_key)
                 resp = client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model="gpt-4.1-mini",
                     messages=[
                         {"role": "system", "content": f"You are Lachesis, a quantum-enhanced financial analytics AI. Provide precise, data-driven analysis. Always respond in {req.language}."},
                         {"role": "user", "content": prompt_text},
@@ -2201,7 +2201,7 @@ def extract_portfolio_screenshot(req: ScreenshotExtractRequest):
         "Content-Type": "application/json",
     }
     payload = {
-        "model": "gpt-4o-mini",
+        "model": "gpt-4.1-mini",
         "messages": [{
             "role": "user",
             "content": [
