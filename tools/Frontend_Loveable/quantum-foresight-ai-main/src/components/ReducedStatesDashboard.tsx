@@ -185,6 +185,7 @@ export const ReducedStatesDashboard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          <p className="text-base font-medium mb-1">Shows how each individual qubit behaves when connected to others — reveals quantum entanglement.</p>
           <p className="text-sm text-muted-foreground mb-4">
             Computes the reduced density matrix for each qubit via partial trace, then projects
             onto the Bloch sphere. For entangled qubits (e.g. Bell state), each reduced state

@@ -110,6 +110,7 @@ export const PresetsDashboard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          <p className="text-base font-medium mb-1">Ready-made circuit setups — click one to instantly load a famous quantum configuration.</p>
           <p className="text-sm text-muted-foreground mb-4">
             Click a preset to load it into the sidebar controls, then run the simulation.
           </p>

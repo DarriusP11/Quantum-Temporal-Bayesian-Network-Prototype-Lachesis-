@@ -84,8 +84,9 @@ export const LachesisGuideDashboard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <p className="text-base font-medium mb-1">A chat assistant that explains your risk results and answers portfolio questions.</p>
           <p className="text-sm text-muted-foreground">
-            Ask Lachesis anything about your portfolio risk. Provide an OpenAI key for GPT-4o-mini powered answers,
+            Ask Lachesis anything about your portfolio risk. Provide an OpenAI key for GPT-4.1-mini powered answers,
             or use the built-in rule-based guidance.
           </p>
 

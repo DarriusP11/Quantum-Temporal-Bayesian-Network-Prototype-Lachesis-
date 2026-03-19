@@ -97,9 +97,10 @@ export const PromptStudioDashboard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <p className="text-base font-medium mb-1">Generates written financial analysis reports using AI templates and your simulation data.</p>
           <p className="text-sm text-muted-foreground">
             Generate AI-driven financial scenario narratives using pre-built templates.
-            Variables are auto-filled from sidebar controls. Add an OpenAI key for GPT-4o-mini output.
+            Variables are auto-filled from sidebar controls. Add an OpenAI key for GPT-4.1-mini output.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

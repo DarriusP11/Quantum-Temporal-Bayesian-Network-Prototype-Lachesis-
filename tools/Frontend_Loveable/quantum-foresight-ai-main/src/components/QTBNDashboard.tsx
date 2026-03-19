@@ -97,6 +97,7 @@ export const QTBNDashboard = () => {
             </div>
             <div>
               <h3 className="text-xl font-bold">Quantum Temporal Bayesian Network</h3>
+              <p className="text-base font-medium">Uses a quantum-powered model to forecast market conditions and portfolio risk over time.</p>
               <p className="text-sm text-muted-foreground font-normal">
                 Python QTBN engine with regime-aware drift forecasting
               </p>

@@ -70,6 +70,7 @@ export const StatevectorDashboard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          <p className="text-base font-medium mb-1">Shows a snapshot of all possible quantum outcomes at once — the foundation of every simulation.</p>
           <p className="text-sm text-muted-foreground mb-4">
             Displays ideal (noise-free) statevector amplitudes and phases from the sidebar circuit.
             Sidebar controls set qubits, shots, and gate steps.

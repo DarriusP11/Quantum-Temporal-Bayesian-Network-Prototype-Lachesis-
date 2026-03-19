@@ -39,6 +39,7 @@ import {
 const OWNER_EMAIL = "darriusperson@gmail.com";
 
 const TABS = [
+  { value: "assistant",      label: "Lachesis AI",        icon: Sparkles },
   { value: "statevector",    label: "Statevector",        icon: Atom },
   { value: "reduced",        label: "Reduced States",     icon: Layers },
   { value: "measurement",    label: "Measurement",        icon: Activity },
@@ -55,7 +56,6 @@ const TABS = [
   { value: "sentiment",      label: "Sentiment Analysis", icon: Newspaper },
   { value: "prompt-studio",  label: "Prompt Studio",      icon: Wand2 },
   { value: "vqe",            label: "VQE",                icon: LineChart },
-  { value: "assistant",      label: "Lachesis AI",        icon: Sparkles },
 ] as const;
 
 function LanguageSelector() {

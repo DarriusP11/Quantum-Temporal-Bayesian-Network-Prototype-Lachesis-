@@ -150,6 +150,7 @@ export const InsiderTradingDashboard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <p className="text-base font-medium mb-1">Looks up SEC filings to see when company executives bought or sold their own stock.</p>
           <p className="text-sm text-muted-foreground">
             Form 3 = initial ownership declaration. Form 4 = transaction changes (buys/sells). Form 5 = annual statement.
             Enter a ticker <span className="text-primary">or</span> a raw CIK. SEC requires a descriptive User-Agent (name + email).

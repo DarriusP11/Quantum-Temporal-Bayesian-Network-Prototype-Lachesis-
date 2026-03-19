@@ -82,6 +82,7 @@ export const SentimentDashboard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
+          <p className="text-base font-medium">Scans recent news headlines about your stocks and scores the overall market mood.</p>
 
           {/* Provider toggle */}
           <div>

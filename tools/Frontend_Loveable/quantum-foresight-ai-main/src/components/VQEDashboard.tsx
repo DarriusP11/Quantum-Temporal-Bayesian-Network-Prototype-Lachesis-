@@ -158,6 +158,7 @@ export const VQEDashboard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <p className="text-base font-medium">Stress-tests your portfolio against different market scenarios using a quantum algorithm.</p>
           {/* Policy */}
           <div>
             <Label>Risk Policy</Label>

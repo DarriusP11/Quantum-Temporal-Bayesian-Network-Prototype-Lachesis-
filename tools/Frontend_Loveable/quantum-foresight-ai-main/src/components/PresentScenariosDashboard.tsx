@@ -79,6 +79,7 @@ export const PresentScenariosDashboard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          <p className="text-base font-medium mb-1">Grades your current circuit for reliability under noise — like a health check for your quantum setup.</p>
           <p className="text-sm text-muted-foreground mb-4">
             Analyses the currently configured circuit scenario — combines fidelity and
             TV distance into a robustness score. Enable noise channels in the sidebar for meaningful analysis.

@@ -105,6 +105,7 @@ export const FidelityExportDashboard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          <p className="text-base font-medium mb-1">Scores how accurate your circuit is (0–1) and lets you download a full report.</p>
           <p className="text-sm text-muted-foreground mb-4">
             Measures how faithfully the noisy circuit reproduces the ideal state via
             Bhattacharyya fidelity on measurement distributions. Export a full report.

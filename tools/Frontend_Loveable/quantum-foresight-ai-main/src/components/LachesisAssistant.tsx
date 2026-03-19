@@ -665,6 +665,7 @@ Always identify yourself as "Lachesis" and be warm and conversational. Make quan
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <p className="text-base font-medium">Your AI financial assistant — ask questions, analyze portfolios, and get investment insights in plain English.</p>
           {/* Messages */}
           <ScrollArea 
             className="h-96 w-full rounded-lg border border-accent/20 bg-muted/20 p-4" 

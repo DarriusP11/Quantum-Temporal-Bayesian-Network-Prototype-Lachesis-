@@ -67,6 +67,7 @@ export const MeasurementDashboard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          <p className="text-base font-medium mb-1">Compares what a perfect circuit outputs vs. what the real noisy one produces.</p>
           <p className="text-sm text-muted-foreground mb-4">
             Compares ideal (noiseless) vs noisy measurement distributions.
             TV distance measures how much noise corrupts the output — enable noise channels in the sidebar.

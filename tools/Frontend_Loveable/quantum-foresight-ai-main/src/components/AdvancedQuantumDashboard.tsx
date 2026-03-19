@@ -165,6 +165,7 @@ export const AdvancedQuantumDashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <p className="text-base font-medium mb-1">Deep diagnostics for your qubits — measures quantum properties and benchmarks circuit performance.</p>
               <p className="text-sm text-muted-foreground">
                 Measures the Bloch sphere coordinates ⟨X⟩, ⟨Y⟩, ⟨Z⟩ of the state produced by the selected gate.
               </p>

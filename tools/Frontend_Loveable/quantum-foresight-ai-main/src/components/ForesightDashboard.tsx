@@ -112,6 +112,7 @@ export const ForesightDashboard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <p className="text-base font-medium mb-1">Maps how increasing noise levels affect your circuit — like a weather forecast for quantum errors.</p>
           <p className="text-sm text-muted-foreground">
             Sweeps depolarizing and amplitude damping noise parameters across a grid, computing KL divergence
             from the ideal (no-noise) distribution at each point.
