@@ -122,7 +122,7 @@ function AppLayout() {
         </div>
 
         {/* Tab system */}
-        <Tabs defaultValue="statevector" className="flex-1 flex flex-col overflow-hidden">
+        <Tabs defaultValue="assistant" className="flex-1 flex flex-col overflow-hidden">
           {/* Scrollable tab strip */}
           <div className="border-b border-accent/20 bg-card/30 backdrop-blur shrink-0 overflow-x-auto">
             <TabsList className="flex w-max min-w-full bg-transparent rounded-none h-10 px-2 gap-0.5">
