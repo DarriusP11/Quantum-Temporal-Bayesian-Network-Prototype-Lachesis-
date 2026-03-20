@@ -50,6 +50,7 @@ export const LachesisAssistant = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [generatedVoiceId, setGeneratedVoiceId] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -61,12 +62,47 @@ export const LachesisAssistant = () => {
     }
   }, [messages]);
 
+  const generateLachesisVoice = async (apiKey: string): Promise<string | null> => {
+    try {
+      const previewRes = await fetch('https://api.elevenlabs.io/v1/voice-generation/generate-voice', {
+        method: 'POST',
+        headers: { 'xi-api-key': apiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gender: 'female',
+          accent: 'american',
+          accent_strength: 1.2,
+          age: 'middle_aged',
+          text: 'In the weaving of fate and fortune, I see paths hidden from mortal eyes. The markets move like ancient rivers — predictable to those who understand their course.'
+        })
+      });
+      if (!previewRes.ok) return null;
+      const { generated_voice_id } = await previewRes.json();
+      const saveRes = await fetch('https://api.elevenlabs.io/v1/voice-generation/create-voice', {
+        method: 'POST',
+        headers: { 'xi-api-key': apiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voice_name: 'Lachesis', generated_voice_id })
+      });
+      if (!saveRes.ok) return null;
+      const { voice_id } = await saveRes.json();
+      return voice_id;
+    } catch {
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    if (elevenLabsApiKey.trim() && !generatedVoiceId) {
+      generateLachesisVoice(elevenLabsApiKey).then(id => { if (id) setGeneratedVoiceId(id); });
+    }
+  }, [elevenLabsApiKey]);
+
   const speakText = async (text: string) => {
     if (!voiceEnabled || !elevenLabsApiKey.trim()) return;
-    
+
     try {
       setIsSpeaking(true);
-      const response = await fetch('https://api.elevenlabs.io/v1/text-to-speech/9BWtsMINqrJLrRacOk9x', {
+      const voiceId = generatedVoiceId ?? '9BWtsMINqrJLrRacOk9x';
+      const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
         method: 'POST',
         headers: {
           'Accept': 'audio/mpeg',
@@ -77,8 +113,10 @@ export const LachesisAssistant = () => {
           text: text,
           model_id: 'eleven_multilingual_v2',
           voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.5
+            stability: 0.35,
+            similarity_boost: 0.75,
+            style: 0.45,
+            use_speaker_boost: true
           }
         })
       });
