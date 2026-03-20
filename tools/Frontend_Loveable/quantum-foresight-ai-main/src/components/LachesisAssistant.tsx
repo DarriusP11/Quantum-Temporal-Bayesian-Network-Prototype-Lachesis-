@@ -169,7 +169,7 @@ export const LachesisAssistant = () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1',
+        model: 'gpt-5.4',
         messages: conversationMessages,
         temperature: 0.4,
         max_completion_tokens: 2000,
