@@ -50,7 +50,6 @@ export const LachesisAssistant = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
-  const [generatedVoiceId, setGeneratedVoiceId] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -62,46 +61,12 @@ export const LachesisAssistant = () => {
     }
   }, [messages]);
 
-  const generateLachesisVoice = async (apiKey: string): Promise<string | null> => {
-    try {
-      const previewRes = await fetch('https://api.elevenlabs.io/v1/voice-generation/generate-voice', {
-        method: 'POST',
-        headers: { 'xi-api-key': apiKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          gender: 'female',
-          accent: 'british',
-          accent_strength: 3.5,
-          age: 'middle_aged',
-          text: 'Εγώ είμαι η Λάχεσις. I am Lachesis, daughter of Zeus and Themis, measurer of the thread of life. The markets, like the Fates themselves, follow patterns written long before mortal eyes could see them.'
-        })
-      });
-      if (!previewRes.ok) return null;
-      const { generated_voice_id } = await previewRes.json();
-      const saveRes = await fetch('https://api.elevenlabs.io/v1/voice-generation/create-voice', {
-        method: 'POST',
-        headers: { 'xi-api-key': apiKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice_name: 'Lachesis', generated_voice_id })
-      });
-      if (!saveRes.ok) return null;
-      const { voice_id } = await saveRes.json();
-      return voice_id;
-    } catch {
-      return null;
-    }
-  };
-
-  useEffect(() => {
-    if (elevenLabsApiKey.trim() && !generatedVoiceId) {
-      generateLachesisVoice(elevenLabsApiKey).then(id => { if (id) setGeneratedVoiceId(id); });
-    }
-  }, [elevenLabsApiKey]);
-
   const speakText = async (text: string) => {
     if (!voiceEnabled || !elevenLabsApiKey.trim()) return;
 
     try {
       setIsSpeaking(true);
-      const voiceId = generatedVoiceId ?? '9BWtsMINqrJLrRacOk9x';
+      const voiceId = 'VM4OoNVLkEAbLiaL7S14';
       const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
         method: 'POST',
         headers: {
