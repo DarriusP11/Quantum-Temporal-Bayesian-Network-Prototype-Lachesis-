@@ -69,10 +69,10 @@ export const LachesisAssistant = () => {
         headers: { 'xi-api-key': apiKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           gender: 'female',
-          accent: 'american',
-          accent_strength: 1.2,
+          accent: 'african',
+          accent_strength: 1.5,
           age: 'middle_aged',
-          text: 'In the weaving of fate and fortune, I see paths hidden from mortal eyes. The markets move like ancient rivers — predictable to those who understand their course.'
+          text: 'Εγώ είμαι η Λάχεσις. I am Lachesis, daughter of Zeus and Themis, measurer of the thread of life. The markets, like the Fates themselves, follow patterns written long before mortal eyes could see them.'
         })
       });
       if (!previewRes.ok) return null;
