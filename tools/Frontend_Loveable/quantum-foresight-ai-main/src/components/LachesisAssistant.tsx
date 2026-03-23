@@ -70,7 +70,7 @@ export const LachesisAssistant = () => {
         body: JSON.stringify({
           gender: 'female',
           accent: 'british',
-          accent_strength: 1.5,
+          accent_strength: 3.5,
           age: 'middle_aged',
           text: 'Εγώ είμαι η Λάχεσις. I am Lachesis, daughter of Zeus and Themis, measurer of the thread of life. The markets, like the Fates themselves, follow patterns written long before mortal eyes could see them.'
         })
