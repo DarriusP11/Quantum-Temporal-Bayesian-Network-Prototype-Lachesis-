@@ -69,7 +69,7 @@ export const LachesisAssistant = () => {
         headers: { 'xi-api-key': apiKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           gender: 'female',
-          accent: 'african',
+          accent: 'british',
           accent_strength: 1.5,
           age: 'middle_aged',
           text: 'Εγώ είμαι η Λάχεσις. I am Lachesis, daughter of Zeus and Themis, measurer of the thread of life. The markets, like the Fates themselves, follow patterns written long before mortal eyes could see them.'
