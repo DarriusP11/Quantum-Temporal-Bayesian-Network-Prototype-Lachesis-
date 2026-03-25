@@ -6,14 +6,14 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Brain, Send, Sparkles, Key, MessageCircle, Atom, Volume2, VolumeX, Paperclip, X, Image, Mic, MicOff } from "lucide-react";
+import { Brain, Send, Sparkles, Key, MessageCircle, Atom, Volume2, VolumeX, Paperclip, X, Image, Mic, MicOff, Camera, Upload, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import lachesisAvatar from "@/assets/lachesis-avatar-v2.jpg";
 import { QuantumTemporalBayesianNetwork } from "@/lib/qtbn-engine";
 import { FinancialData } from "@/types/quantum";
 import { useAppContext } from "@/contexts/AppContext";
 import { useVoice } from "@/hooks/useVoice";
-import { apiWebSearch } from "@/lib/api";
+import { apiWebSearch, post } from "@/lib/api";
 
 interface Message {
   id: string;
@@ -51,8 +51,19 @@ export const LachesisAssistant = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [ssExpanded, setSsExpanded] = useState(false);
+  const [ssFile, setSsFile] = useState<File | null>(null);
+  const [ssPreview, setSsPreview] = useState<string | null>(null);
+  const [ssLoading, setSsLoading] = useState(false);
+  const [ssError, setSsError] = useState<string | null>(null);
+  const [ssResult, setSsResult] = useState<{
+    tickers: string[];
+    portfolio_value: number | null;
+    positions: { ticker: string; market_value: number | null; shares: number | null; price: number | null }[];
+  } | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const ssInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -60,6 +71,59 @@ export const LachesisAssistant = () => {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
   }, [messages]);
+
+  const handleSsFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setSsFile(file);
+    setSsResult(null);
+    setSsError(null);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (ev) => setSsPreview(ev.target?.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setSsPreview(null);
+    }
+  };
+
+  const analyzeScreenshot = async () => {
+    if (!ssFile) return;
+    setSsLoading(true);
+    setSsError(null);
+    setSsResult(null);
+    try {
+      const saved = localStorage.getItem("lachesis_admin_keys");
+      const openaiKey = saved ? (JSON.parse(saved) as Record<string, string>)["openai"] ?? "" : "";
+      const reader = new FileReader();
+      const b64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = (ev) => {
+          const result = ev.target?.result as string;
+          resolve(result.split(",")[1] ?? result);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(ssFile);
+      });
+      const res = await post<typeof ssResult>("/api/financial/extract-screenshot", {
+        image_b64: b64,
+        openai_api_key: openaiKey,
+      });
+      setSsResult(res);
+    } catch (e) {
+      setSsError(e instanceof Error ? e.message : "Screenshot extraction failed");
+    } finally {
+      setSsLoading(false);
+    }
+  };
+
+  const analyzeWithLachesis = () => {
+    if (!ssResult) return;
+    const summary = ssResult.positions.map(p =>
+      `${p.ticker}: ${p.shares ?? '?'} shares @ $${p.price ?? '?'} = $${p.market_value ?? '?'}`
+    ).join('\n');
+    const msg = `Here is my portfolio extracted from a screenshot:\n\n${summary}\n\nTotal value: $${ssResult.portfolio_value ?? 'unknown'}\n\nPlease analyze this portfolio and give me a quantum temporal risk assessment.`;
+    setInputMessage(msg);
+    setSsExpanded(false);
+  };
 
   const speakText = async (text: string) => {
     if (!voiceEnabled || !elevenLabsApiKey.trim()) return;
@@ -669,6 +733,76 @@ Always identify yourself as "Lachesis" and be warm and conversational. Make quan
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-base font-medium">Your AI financial assistant — ask questions, analyze portfolios, and get investment insights in plain English.</p>
+
+          {/* Portfolio Screenshot Import */}
+          <div className="border border-accent/20 rounded-lg overflow-hidden">
+            <button
+              className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors text-sm font-medium"
+              onClick={() => setSsExpanded(v => !v)}
+            >
+              <span className="flex items-center gap-2"><Camera className="w-4 h-4 text-accent" />Import Portfolio from Screenshot</span>
+              {ssExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+            {ssExpanded && (
+              <div className="p-4 space-y-3 bg-muted/10">
+                <p className="text-xs text-muted-foreground">Upload a brokerage screenshot (Robinhood, Fidelity, etc.) to extract your positions and analyze them with Lachesis.</p>
+                <input ref={ssInputRef} type="file" accept="image/*" className="hidden" onChange={handleSsFileChange} />
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => ssInputRef.current?.click()} className="flex-1">
+                    <Upload className="w-4 h-4 mr-2" />{ssFile ? ssFile.name : "Choose Screenshot"}
+                  </Button>
+                  {ssFile && (
+                    <Button variant="outline" size="sm" onClick={() => { setSsFile(null); setSsPreview(null); setSsResult(null); setSsError(null); }}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+                {ssPreview && <img src={ssPreview} alt="Preview" className="max-h-32 rounded border border-accent/20 object-contain" />}
+                {ssFile && (
+                  <Button onClick={analyzeScreenshot} disabled={ssLoading} className="w-full" size="sm">
+                    {ssLoading ? "Extracting..." : "Extract Portfolio Data"}
+                  </Button>
+                )}
+                {ssError && <p className="text-xs text-red-400">{ssError}</p>}
+                {ssResult && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-green-400">✓ Extraction successful</span>
+                      {ssResult.portfolio_value != null && (
+                        <span className="text-xs text-muted-foreground">Total: ${ssResult.portfolio_value.toLocaleString()}</span>
+                      )}
+                    </div>
+                    <div className="rounded border border-accent/20 overflow-hidden text-xs">
+                      <table className="w-full">
+                        <thead className="bg-muted/30">
+                          <tr>
+                            <th className="text-left px-2 py-1">Ticker</th>
+                            <th className="text-right px-2 py-1">Shares</th>
+                            <th className="text-right px-2 py-1">Price</th>
+                            <th className="text-right px-2 py-1">Value</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {ssResult.positions.map((p, i) => (
+                            <tr key={i} className="border-t border-accent/10">
+                              <td className="px-2 py-1 font-medium">{p.ticker}</td>
+                              <td className="px-2 py-1 text-right">{p.shares ?? '—'}</td>
+                              <td className="px-2 py-1 text-right">{p.price != null ? `$${p.price}` : '—'}</td>
+                              <td className="px-2 py-1 text-right">{p.market_value != null ? `$${p.market_value.toLocaleString()}` : '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <Button onClick={analyzeWithLachesis} className="w-full" size="sm">
+                      Analyze with Lachesis →
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Messages */}
           <ScrollArea 
             className="h-96 w-full rounded-lg border border-accent/20 bg-muted/20 p-4" 
