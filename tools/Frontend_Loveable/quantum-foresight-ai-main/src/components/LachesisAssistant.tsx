@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Brain, Send, Sparkles, Key, MessageCircle, Atom, Volume2, VolumeX, Paperclip, X, Image, Mic, MicOff, Camera, Upload, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import lachesisAvatar from "@/assets/lachesis-avatar-v2.jpg";
@@ -51,6 +52,9 @@ export const LachesisAssistant = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [regime, setRegime] = useState("Unknown");
+  const [varUsd, setVarUsd] = useState("");
+  const [guideExpanded, setGuideExpanded] = useState(false);
   const [ssExpanded, setSsExpanded] = useState(false);
   const [ssFile, setSsFile] = useState<File | null>(null);
   const [ssPreview, setSsPreview] = useState<string | null>(null);
@@ -377,11 +381,43 @@ export const LachesisAssistant = () => {
     if (!inputMessage.trim() && attachments.length === 0) return;
     
     if (!apiKey.trim()) {
-      toast({
-        title: "API Key Required",
-        description: "Please enter your OpenAI API key to chat with Lachesis.",
-        variant: "destructive"
-      });
+      // Rule-based fallback via backend (no OpenAI key needed)
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        role: 'user',
+        content: inputMessage,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, userMessage]);
+      setInputMessage("");
+      setIsLoading(true);
+      try {
+        const res = await post<{ narrative: string }>("/api/financial/lachesis-guide", {
+          question: inputMessage,
+          tickers: appState.finance.tickers.split(",").map((t: string) => t.trim()),
+          regime,
+          var_usd: varUsd ? parseFloat(varUsd) : null,
+          portfolio_value: appState.finance.portfolio_value,
+          language,
+        });
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: res?.narrative ?? "I'm sorry, I couldn't process that request.",
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        if (voiceEnabled) await speakText(assistantMessage.content);
+      } catch {
+        setMessages(prev => [...prev, {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: "I'm unable to reach the backend right now. Please add an OpenAI API key for full functionality.",
+          timestamp: new Date(),
+        }]);
+      } finally {
+        setIsLoading(false);
+      }
       return;
     }
 
@@ -470,7 +506,22 @@ When users share portfolio screenshots or ask about their portfolio predictions:
 
 Always identify yourself as "Lachesis" and be warm and conversational. Make quantum finance accessible and actionable.
 
-**LANGUAGE INSTRUCTION**: Always respond in ${language}. If the user writes in a different language, still respond in ${language}.`
+**LANGUAGE INSTRUCTION**: Always respond in ${language}. If the user writes in a different language, still respond in ${language}.
+
+## Current App State (user's live configuration):
+- Tickers being analyzed: ${appState.finance.tickers}
+- Portfolio Value: $${appState.finance.portfolio_value.toLocaleString()}
+- Lookback Period: ${appState.finance.lookback_days} days
+- Confidence Level: ${(appState.finance.confidence_level * 100).toFixed(0)}%
+- VaR Horizon: ${appState.finance.var_horizon} days
+- Monte Carlo Simulations: ${appState.finance.mc_sims.toLocaleString()}
+- Macro Stress Testing: ${appState.finance.apply_macro_stress ? 'Enabled' : 'Disabled'}
+- Quantum Qubits: ${appState.num_qubits}
+- Depolarizing Noise: ${appState.noise.enable_depolarizing ? `Enabled (p=${appState.noise.pdep0})` : 'Disabled'}
+- Amplitude Damping: ${appState.noise.enable_amplitude_damping ? `Enabled (p=${appState.noise.pamp0})` : 'Disabled'}
+- Market Regime (user set): ${regime}${varUsd ? `\n- User-estimated VaR: $${varUsd}` : ''}
+
+Use these settings as context when answering questions about the user's portfolio, risk, or quantum simulations. When the user refers to "my portfolio" or "my settings", use these values.`
         },
         ...messages.map(msg => ({
           role: msg.role,
@@ -650,7 +701,7 @@ Always identify yourself as "Lachesis" and be warm and conversational. Make quan
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
@@ -803,6 +854,47 @@ Always identify yourself as "Lachesis" and be warm and conversational. Make quan
             )}
           </div>
 
+          {/* Market Context */}
+          <div className="border border-accent/20 rounded-lg overflow-hidden">
+            <button
+              className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors text-sm font-medium"
+              onClick={() => setGuideExpanded(v => !v)}
+            >
+              <span className="flex items-center gap-2"><Brain className="w-4 h-4 text-accent" />Market Context</span>
+              {guideExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+            {guideExpanded && (
+              <div className="p-4 space-y-3 bg-muted/10">
+                <p className="text-xs text-muted-foreground">These context values are injected into every Lachesis response for more accurate analysis.</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Market Regime</Label>
+                    <Select value={regime} onValueChange={setRegime}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["Unknown","Calm","Moderate","High Volatility","Stress","Crisis"].map(r => (
+                          <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Estimated VaR (USD)</Label>
+                    <Input
+                      type="number"
+                      placeholder="e.g. 5000"
+                      value={varUsd}
+                      onChange={e => setVarUsd(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Messages */}
           <ScrollArea 
             className="h-96 w-full rounded-lg border border-accent/20 bg-muted/20 p-4" 
@@ -948,7 +1040,7 @@ Always identify yourself as "Lachesis" and be warm and conversational. Make quan
                 placeholder="Ask Lachesis about quantum computing, financial analytics, or risk assessment..."
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
+                onKeyDown={handleKeyDown}
                 disabled={isLoading}
                 className="flex-1"
               />
@@ -998,9 +1090,9 @@ Always identify yourself as "Lachesis" and be warm and conversational. Make quan
               >
                 {voiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
               </Button>
-              <Button 
-                onClick={handleSendMessage} 
-                disabled={isLoading || (!inputMessage.trim() && attachments.length === 0) || !apiKey.trim()}
+              <Button
+                onClick={handleSendMessage}
+                disabled={isLoading || (!inputMessage.trim() && attachments.length === 0)}
                 size="icon"
               >
                 <Send className="w-4 h-4" />
@@ -1010,38 +1102,25 @@ Always identify yourself as "Lachesis" and be warm and conversational. Make quan
 
           {/* Quick Actions */}
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setInputMessage("How do quantum circuits work in financial modeling?")}
-              disabled={isLoading}
-            >
-              Quantum Circuits
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setInputMessage("Explain VaR calculation using Monte Carlo methods")}
-              disabled={isLoading}
-            >
-              Risk Analysis
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setInputMessage("How does sentiment analysis integrate with quantum computing?")}
-              disabled={isLoading}
-            >
-              Sentiment Integration
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setInputMessage("What's the latest in quantum computing for finance?")}
-              disabled={isLoading}
-            >
-              QTBN Explained
-            </Button>
+            {[
+              "What is the current market risk level?",
+              "Should I reduce my position size?",
+              "What hedges are appropriate for this regime?",
+              "How does quantum noise affect my VaR estimate?",
+              "Explain my portfolio risk in simple terms",
+              "What is the optimal portfolio allocation?",
+            ].map(q => (
+              <Button
+                key={q}
+                variant="outline"
+                size="sm"
+                onClick={() => setInputMessage(q)}
+                disabled={isLoading}
+                className="text-xs"
+              >
+                {q}
+              </Button>
+            ))}
           </div>
         </CardContent>
       </Card>

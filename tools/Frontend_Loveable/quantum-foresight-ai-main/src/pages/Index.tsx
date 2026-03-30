@@ -21,7 +21,6 @@ import { AdvancedQuantumDashboard }  from "@/components/AdvancedQuantumDashboard
 import { ForesightDashboard }        from "@/components/ForesightDashboard";
 import { FinancialDashboard }        from "@/components/FinancialDashboard";
 import { InsiderTradingDashboard }   from "@/components/InsiderTradingDashboard";
-import { LachesisGuideDashboard }    from "@/components/LachesisGuideDashboard";
 import { QTBNDashboard }             from "@/components/QTBNDashboard";
 import { QAOADashboard }             from "@/components/QAOADashboard";
 import { SentimentDashboard }        from "@/components/SentimentDashboard";
@@ -50,7 +49,6 @@ const TABS = [
   { value: "advanced",       label: "Advanced Quantum",   icon: Gauge },
   { value: "finance",        label: "Financial Analytics",icon: TrendingUp },
   { value: "insider",        label: "Insider Trading",    icon: Briefcase },
-  { value: "lachesis-guide", label: "Lachesis Guide",     icon: Sparkles },
   { value: "qtbn",           label: "Q-TBN",              icon: Brain },
   { value: "qaoa",           label: "Toy QAOA",           icon: Zap },
   { value: "sentiment",      label: "Sentiment Analysis", icon: Newspaper },
@@ -158,7 +156,6 @@ function AppLayout() {
             <TabsContent value="advanced"       className="mt-0"><AdvancedQuantumDashboard /></TabsContent>
             <TabsContent value="finance"        className="mt-0"><FinancialDashboard /></TabsContent>
             <TabsContent value="insider"        className="mt-0"><InsiderTradingDashboard /></TabsContent>
-            <TabsContent value="lachesis-guide" className="mt-0"><LachesisGuideDashboard /></TabsContent>
             <TabsContent value="qtbn"           className="mt-0"><QTBNDashboard /></TabsContent>
             <TabsContent value="qaoa"           className="mt-0"><QAOADashboard /></TabsContent>
             <TabsContent value="sentiment"      className="mt-0"><SentimentDashboard /></TabsContent>
