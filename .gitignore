@@ -22,6 +22,7 @@ dist/
 .env.local
 .env.*.local
 auth_users.json
+.streamlit/secrets.toml
 
 # macOS
 .DS_Store
