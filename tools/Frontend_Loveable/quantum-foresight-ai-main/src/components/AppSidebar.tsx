@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppContext, GateChoice, GateStepConfig, NoiseConfig } from "@/contexts/AppContext";
-import { ChevronDown, ChevronRight, Atom, Settings, TrendingUp, Save, RotateCcw, User, LogOut, Cpu } from "lucide-react";
+import { ChevronDown, ChevronRight, Atom, Settings, TrendingUp, Save, RotateCcw, User, LogOut, Cpu, HelpCircle } from "lucide-react";
 
 // ── Client-side ASCII circuit preview (updates live as controls change) ───────
 function buildAsciiCircuit(state: ReturnType<typeof import("@/contexts/AppContext").useAppContext>["state"]): string {
@@ -125,6 +125,28 @@ function StepRow({ stepIdx, nq, step, onChange }: {
   );
 }
 
+// ── Tab Guide data ─────────────────────────────────────────────────────────────
+const TAB_GUIDE = [
+  // AI / Classical
+  { name: "Lachesis AI",         section: "ai",      description: "Chat with your AI financial assistant. Ask about your portfolio, get market insights, and receive plain-English explanations of complex financial concepts." },
+  { name: "Financial Analytics", section: "ai",      description: "Analyze your stock portfolio with real market data. View risk metrics (VaR), return projections, a correlation matrix, and Monte Carlo simulations." },
+  { name: "Insider Trading",     section: "ai",      description: "Track stock purchases and sales made by company executives. When insiders buy their own stock heavily, it's often a bullish signal." },
+  { name: "Sentiment Analysis",  section: "ai",      description: "Measures the market's mood about your stocks by scanning financial news headlines. Positive coverage = bullish; negative coverage = bearish." },
+  { name: "Prompt Studio",       section: "ai",      description: "A workspace for crafting and testing custom AI prompts. Build the exact questions you want Lachesis to answer about your data." },
+  // Quantum / Qiskit
+  { name: "Q-TBN",               section: "quantum", description: "Quantum Temporal Bayesian Network. Predicts future market regimes (Calm, Volatile, Crisis) by modeling the probabilities of different market states over time." },
+  { name: "Foresight",           section: "quantum", description: "Runs a quantum-powered simulation to model how a portfolio might perform under different market scenarios and noise conditions." },
+  { name: "Statevector",         section: "quantum", description: "Visualizes the full quantum state of a simulated circuit — like seeing all possible outcomes of a quantum computation at once before measuring." },
+  { name: "Reduced States",      section: "quantum", description: "Shows a simplified view of individual qubits rather than the entire quantum system, making it easier to spot patterns." },
+  { name: "Measurement",         section: "quantum", description: "Simulates measuring a quantum circuit and shows the probability of each possible result — like rolling a quantum dice and charting the odds." },
+  { name: "Fidelity & Export",   section: "quantum", description: "Measures how accurately a quantum circuit performed vs. the ideal. Also lets you export simulation data for external analysis." },
+  { name: "Presets",             section: "quantum", description: "Load pre-built quantum circuit configurations to quickly explore common quantum algorithms without configuring everything from scratch." },
+  { name: "Present Scenarios",   section: "quantum", description: "Compare multiple quantum simulation scenarios side-by-side to understand how different configurations affect the outcome." },
+  { name: "Advanced Quantum",    section: "quantum", description: "Deep-dive quantum diagnostics: process tomography (circuit health check), benchmarking, calibration, and fidelity testing tools." },
+  { name: "Toy QAOA",            section: "quantum", description: "A demo of the Quantum Approximate Optimization Algorithm — a quantum technique that finds the best portfolio allocation by searching many combinations at once." },
+  { name: "VQE",                 section: "quantum", description: "Variational Quantum Eigensolver used as a risk gate. Estimates the minimum-risk state of a portfolio using a hybrid quantum-classical algorithm." },
+] as const;
+
 // ═══════════════════════════════════════════════════════════════════════════════
 export function AppSidebar({ isOwner = false }: { isOwner?: boolean }) {
   const { user, signOut } = useAuth();
@@ -134,6 +156,7 @@ export function AppSidebar({ isOwner = false }: { isOwner?: boolean }) {
   const [openQuantum, setOpenQuantum]   = useState(true);
   const [openNoise, setOpenNoise]       = useState(false);
   const [openFinance, setOpenFinance]   = useState(false);
+  const [openGuide, setOpenGuide]       = useState(false);
 
   const displayName = user?.user_metadata?.display_name || user?.email || "Guest";
   const role = user?.email?.toLowerCase() === OWNER_EMAIL ? "Owner" : "User";
@@ -350,6 +373,41 @@ export function AppSidebar({ isOwner = false }: { isOwner?: boolean }) {
             <Switch checked={finance.show_position}
               onCheckedChange={v => setFinance({ ...finance, show_position: v })} id="show-position" />
             <Label htmlFor="show-position" className="text-xs cursor-pointer">Position ($ = shares × price)</Label>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <Separator />
+
+      {/* ── Tab Guide ────────────────────────────────────────────────────── */}
+      <Collapsible open={openGuide} onOpenChange={setOpenGuide} className="px-3 py-2">
+        <CollapsibleTrigger className="flex w-full items-center justify-between py-1 text-sm font-semibold hover:text-primary transition-colors">
+          <div className="flex items-center gap-2">
+            <HelpCircle className="w-4 h-4 text-primary" />
+            Tab Guide
+          </div>
+          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${openGuide ? "rotate-180" : ""}`} />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="mt-2 max-h-80 overflow-y-auto space-y-3 pr-1 pb-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">AI / Classical</p>
+            {TAB_GUIDE.filter(t => t.section === "ai").map(tab => (
+              <div key={tab.name} className="space-y-0.5">
+                <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <span className="text-primary text-[8px]">●</span>{tab.name}
+                </p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed pl-3">{tab.description}</p>
+              </div>
+            ))}
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground pt-1">Quantum / Qiskit</p>
+            {TAB_GUIDE.filter(t => t.section === "quantum").map(tab => (
+              <div key={tab.name} className="space-y-0.5">
+                <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <span className="text-accent text-[8px]">●</span>{tab.name}
+                </p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed pl-3">{tab.description}</p>
+              </div>
+            ))}
           </div>
         </CollapsibleContent>
       </Collapsible>

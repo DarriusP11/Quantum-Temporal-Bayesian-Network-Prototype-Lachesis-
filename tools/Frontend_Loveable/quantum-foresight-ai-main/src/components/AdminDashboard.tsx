@@ -2,14 +2,14 @@
  * AdminDashboard.tsx — API key management (owner-only tab).
  * Only rendered when user email === "darriusperson@gmail.com".
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, CheckCircle, Eye, EyeOff, KeyRound, Trash2 } from "lucide-react";
-import { post } from "@/lib/api";
+import { Activity, AlertCircle, CheckCircle, Eye, EyeOff, KeyRound, Trash2 } from "lucide-react";
+import { post, get } from "@/lib/api";
 
 interface KeySpec {
   service: string;
@@ -29,6 +29,14 @@ const KEY_SPECS: KeySpec[] = [
 
 type KeyStatus = "unconfigured" | "valid" | "invalid";
 
+interface BillingHealth {
+  stripe_connected:       boolean;
+  pro_price_valid:        boolean;
+  enterprise_price_valid: boolean;
+  supabase_ok:            boolean;
+  webhook_secret_set:     boolean;
+}
+
 export const AdminDashboard = () => {
   const [keys, setKeys]     = useState<Record<string, string>>(
     () => {
@@ -41,6 +49,26 @@ export const AdminDashboard = () => {
   const [show, setShow]     = useState<Record<string, boolean>>({});
   const [status, setStatus] = useState<Record<string, KeyStatus>>({});
   const [validating, setValidating] = useState<string | null>(null);
+
+  // ── Billing health ──────────────────────────────────────────────────────────
+  const [health, setHealth]             = useState<BillingHealth | null>(null);
+  const [healthLoading, setHealthLoading] = useState(false);
+  const [healthError, setHealthError]   = useState<string | null>(null);
+
+  const fetchHealth = async () => {
+    setHealthLoading(true);
+    setHealthError(null);
+    try {
+      const data = await get<BillingHealth>("/api/billing/health");
+      setHealth(data);
+    } catch (e: unknown) {
+      setHealthError(e instanceof Error ? e.message : "Could not reach backend");
+    } finally {
+      setHealthLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchHealth(); }, []);
 
   const setKey = (service: string, val: string) => {
     const updated = { ...keys, [service]: val };
@@ -155,6 +183,61 @@ export const AdminDashboard = () => {
           );
         })}
       </div>
+
+      {/* ── Billing System Health ───────────────────────────────────────────── */}
+      <Card className="border-primary/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Activity className="w-4 h-4 text-primary" />
+            Billing System Health
+            <Button
+              size="sm" variant="outline"
+              className="ml-auto h-6 text-xs px-2"
+              onClick={fetchHealth}
+              disabled={healthLoading}
+            >
+              {healthLoading ? "Checking…" : "Refresh"}
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {healthError && (
+            <div className="flex items-center gap-2 text-xs text-red-400 mb-3">
+              <AlertCircle className="w-3 h-3 shrink-0" />
+              {healthError}
+            </div>
+          )}
+          {!health && !healthError && (
+            <p className="text-xs text-muted-foreground">Loading…</p>
+          )}
+          {health && (() => {
+            const checks: { key: keyof BillingHealth; label: string; hint: string }[] = [
+              { key: "stripe_connected",       label: "Stripe API key valid",        hint: "STRIPE_SECRET_KEY on Railway" },
+              { key: "pro_price_valid",        label: "Pro price ID valid",          hint: "STRIPE_PRO_MONTHLY_PRICE_ID in Stripe" },
+              { key: "enterprise_price_valid", label: "Enterprise price ID valid",   hint: "STRIPE_ENTERPRISE_MONTHLY_PRICE_ID in Stripe" },
+              { key: "supabase_ok",            label: "Supabase billing columns",    hint: "Run ALTER TABLE migration in Supabase SQL editor" },
+              { key: "webhook_secret_set",     label: "Webhook secret configured",   hint: "STRIPE_WEBHOOK_SECRET on Railway" },
+            ];
+            return (
+              <ul className="space-y-2">
+                {checks.map(({ key, label, hint }) => {
+                  const ok = health[key];
+                  return (
+                    <li key={key} className="flex items-start gap-2 text-xs">
+                      {ok
+                        ? <CheckCircle className="w-3.5 h-3.5 text-green-400 mt-0.5 shrink-0" />
+                        : <AlertCircle className="w-3.5 h-3.5 text-red-400 mt-0.5 shrink-0" />
+                      }
+                      <span className={ok ? "text-green-400 font-medium" : "text-red-400 font-medium"}>{label}</span>
+                      <span className="text-muted-foreground">— {hint}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            );
+          })()}
+        </CardContent>
+      </Card>
 
       <Card className="border-accent/20">
         <CardHeader><CardTitle className="text-sm">How to use your keys</CardTitle></CardHeader>

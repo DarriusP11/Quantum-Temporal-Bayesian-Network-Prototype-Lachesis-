@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -7,6 +8,13 @@ import { AppProvider, useAppContext, SUPPORTED_LANGUAGES } from "@/contexts/AppC
 import { AppSidebar } from "@/components/AppSidebar";
 import AuthGuard from "@/components/AuthGuard";
 import { useAuth } from "@/hooks/useAuth";
+
+// ── Subscription ─────────────────────────────────────────────────────────────
+import { useSubscription } from "@/hooks/useSubscription";
+import { LockedTabOverlay } from "@/components/LockedTabOverlay";
+import { SubscriptionBadge } from "@/components/SubscriptionBadge";
+import { PricingModal } from "@/components/PricingModal";
+import { post } from "@/lib/api";
 
 // ── Quantum tabs ─────────────────────────────────────────────────────────────
 import { StatevectorDashboard }      from "@/components/StatevectorDashboard";
@@ -28,33 +36,41 @@ import { PromptStudioDashboard }     from "@/components/PromptStudioDashboard";
 import { VQEDashboard }              from "@/components/VQEDashboard";
 import { LachesisAssistant }         from "@/components/LachesisAssistant";
 import { AdminDashboard }            from "@/components/AdminDashboard";
+import { QuantumHardwareTab }        from "@/components/QuantumHardwareTab";
 
 import {
   Atom, Layers, Activity, Shield, BookOpen, BarChart2,
   TrendingUp, Briefcase, Sparkles, Brain, Zap, Newspaper,
-  Wand2, Gauge, KeyRound, Thermometer, LineChart,
+  Wand2, Gauge, KeyRound, Thermometer, LineChart, Cpu,
 } from "lucide-react";
 
 const OWNER_EMAIL = "darriusperson@gmail.com";
 
 const TABS = [
+  // ── AI / Classical ───────────────────────────────────────────────────
   { value: "assistant",      label: "Lachesis AI",        icon: Sparkles },
+  { value: "finance",        label: "Financial Analytics",icon: TrendingUp },
+  { value: "insider",        label: "Insider Trading",    icon: Briefcase },
+  { value: "sentiment",      label: "Sentiment Analysis", icon: Newspaper },
+  { value: "prompt-studio",  label: "Prompt Studio",      icon: Wand2 },
+  // ── Quantum / Qiskit ─────────────────────────────────────────────────
+  { value: "qtbn",           label: "Q-TBN",              icon: Brain },
+  { value: "foresight",      label: "Foresight",          icon: Thermometer },
   { value: "statevector",    label: "Statevector",        icon: Atom },
   { value: "reduced",        label: "Reduced States",     icon: Layers },
   { value: "measurement",    label: "Measurement",        icon: Activity },
   { value: "fidelity",       label: "Fidelity & Export",  icon: Shield },
   { value: "presets",        label: "Presets",            icon: BookOpen },
   { value: "scenarios",      label: "Present Scenarios",  icon: BarChart2 },
-  { value: "foresight",      label: "Foresight",          icon: Thermometer },
   { value: "advanced",       label: "Advanced Quantum",   icon: Gauge },
-  { value: "finance",        label: "Financial Analytics",icon: TrendingUp },
-  { value: "insider",        label: "Insider Trading",    icon: Briefcase },
-  { value: "qtbn",           label: "Q-TBN",              icon: Brain },
-  { value: "qaoa",           label: "Toy QAOA",           icon: Zap },
-  { value: "sentiment",      label: "Sentiment Analysis", icon: Newspaper },
-  { value: "prompt-studio",  label: "Prompt Studio",      icon: Wand2 },
-  { value: "vqe",            label: "VQE",                icon: LineChart },
+  { value: "qaoa",             label: "Toy QAOA",            icon: Zap },
+  { value: "vqe",             label: "VQE",                 icon: LineChart },
+  { value: "quantum-hardware",label: "Quantum Hardware",    icon: Cpu },
 ] as const;
+
+// ── Subscription gating ──────────────────────────────────────────────────────
+const PRO_TABS        = new Set(["qaoa", "vqe"]);
+const ENTERPRISE_TABS = new Set(["quantum-hardware"]);
 
 function LanguageSelector() {
   const { state, setLanguage } = useAppContext();
@@ -82,7 +98,34 @@ function AppLayout() {
   const { user } = useAuth();
   const isOwner = user?.email?.toLowerCase() === OWNER_EMAIL;
 
+  // ── Subscription ────────────────────────────────────────────────────────
+  const { subscription, refresh } = useSubscription();
+  const [pricingOpen, setPricingOpen]   = useState(false);
+  const [pricingTier, setPricingTier]   = useState<"pro" | "enterprise">("pro");
+
+  const openUpgrade = (tier: "pro" | "enterprise" = "pro") => {
+    setPricingTier(tier);
+    setPricingOpen(true);
+  };
+
+  const handleManage = async () => {
+    try {
+      if (!user?.id) return;
+      const { url } = await post<{ url: string }>("/api/billing/portal-session", { user_id: user.id });
+      window.open(url, "_blank");
+    } catch {
+      openUpgrade(subscription.plan === "enterprise" ? "enterprise" : "pro");
+    }
+  };
+
   return (
+    <>
+    <PricingModal
+      open={pricingOpen}
+      onClose={() => setPricingOpen(false)}
+      onSuccess={refresh}
+      defaultTier={pricingTier}
+    />
     <div className="flex h-screen overflow-hidden bg-background">
       {/* ── Left sidebar ─────────────────────────────────────────────────── */}
       <AppSidebar isOwner={isOwner} />
@@ -90,7 +133,7 @@ function AppLayout() {
       {/* ── Main area ────────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header bar */}
-        <div className="border-b border-accent/20 bg-gradient-to-r from-background via-accent/5 to-background px-6 py-3 shrink-0">
+        <div className="border-b border-border/40 bg-card/80 backdrop-blur px-6 py-3 shrink-0">
           <div className="flex items-center gap-3">
             <div className="relative">
               <Atom className="w-8 h-8 text-primary animate-pulse" />
@@ -114,6 +157,12 @@ function AppLayout() {
               {isOwner && (
                 <Badge className="bg-primary/20 text-primary border-primary/30 text-xs">Owner</Badge>
               )}
+              <SubscriptionBadge
+                plan={subscription.plan}
+                loading={subscription.loading}
+                onUpgrade={() => openUpgrade("pro")}
+                onManage={handleManage}
+              />
               <LanguageSelector />
             </div>
           </div>
@@ -122,13 +171,13 @@ function AppLayout() {
         {/* Tab system */}
         <Tabs defaultValue="assistant" className="flex-1 flex flex-col overflow-hidden">
           {/* Scrollable tab strip */}
-          <div className="border-b border-accent/20 bg-card/30 backdrop-blur shrink-0 overflow-x-auto">
+          <div className="border-b border-border/40 bg-card shrink-0 overflow-x-auto">
             <TabsList className="flex w-max min-w-full bg-transparent rounded-none h-10 px-2 gap-0.5">
               {TABS.map(({ value, label, icon: Icon }) => (
                 <TabsTrigger
                   key={value}
                   value={value}
-                  className="flex items-center gap-1.5 whitespace-nowrap px-3 h-9 text-xs rounded-sm data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
+                  className="flex items-center gap-1.5 whitespace-nowrap px-3 h-9 text-xs rounded-sm data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-[inset_0_-2px_0_hsl(var(--primary))]"
                 >
                   <Icon className="w-3 h-3" />{label}
                 </TabsTrigger>
@@ -136,7 +185,7 @@ function AppLayout() {
               {isOwner && (
                 <TabsTrigger
                   value="admin"
-                  className="flex items-center gap-1.5 whitespace-nowrap px-3 h-9 text-xs rounded-sm data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
+                  className="flex items-center gap-1.5 whitespace-nowrap px-3 h-9 text-xs rounded-sm data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-[inset_0_-2px_0_hsl(var(--primary))]"
                 >
                   <KeyRound className="w-3 h-3" />Admin
                 </TabsTrigger>
@@ -157,10 +206,23 @@ function AppLayout() {
             <TabsContent value="finance"        className="mt-0"><FinancialDashboard /></TabsContent>
             <TabsContent value="insider"        className="mt-0"><InsiderTradingDashboard /></TabsContent>
             <TabsContent value="qtbn"           className="mt-0"><QTBNDashboard /></TabsContent>
-            <TabsContent value="qaoa"           className="mt-0"><QAOADashboard /></TabsContent>
+            <TabsContent value="qaoa" className="mt-0">
+              {subscription.is_pro || subscription.is_enterprise
+                ? <QAOADashboard />
+                : <LockedTabOverlay requiredPlan="pro" tabName="Toy QAOA" onUpgrade={() => openUpgrade("pro")} />}
+            </TabsContent>
             <TabsContent value="sentiment"      className="mt-0"><SentimentDashboard /></TabsContent>
             <TabsContent value="prompt-studio"  className="mt-0"><PromptStudioDashboard /></TabsContent>
-            <TabsContent value="vqe"            className="mt-0"><VQEDashboard /></TabsContent>
+            <TabsContent value="vqe" className="mt-0">
+              {subscription.is_pro || subscription.is_enterprise
+                ? <VQEDashboard />
+                : <LockedTabOverlay requiredPlan="pro" tabName="VQE" onUpgrade={() => openUpgrade("pro")} />}
+            </TabsContent>
+            <TabsContent value="quantum-hardware" className="mt-0">
+              {subscription.is_enterprise
+                ? <QuantumHardwareTab />
+                : <LockedTabOverlay requiredPlan="enterprise" tabName="Quantum Hardware" onUpgrade={() => openUpgrade("enterprise")} />}
+            </TabsContent>
             <TabsContent value="assistant"      className="mt-0"><LachesisAssistant /></TabsContent>
             {isOwner && (
               <TabsContent value="admin"        className="mt-0"><AdminDashboard /></TabsContent>
@@ -169,6 +231,7 @@ function AppLayout() {
         </Tabs>
       </div>
     </div>
+    </>
   );
 }
 
