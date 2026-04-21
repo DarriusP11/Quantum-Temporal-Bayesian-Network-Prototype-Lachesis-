@@ -17,9 +17,8 @@ import { PricingModal } from "@/components/PricingModal";
 import { post } from "@/lib/api";
 
 // ── Quantum tabs ─────────────────────────────────────────────────────────────
-import { StatevectorDashboard }      from "@/components/StatevectorDashboard";
+import { CircuitInspectorDashboard } from "@/components/CircuitInspectorDashboard";
 import { ReducedStatesDashboard }    from "@/components/ReducedStatesDashboard";
-import { MeasurementDashboard }      from "@/components/MeasurementDashboard";
 import { FidelityExportDashboard }   from "@/components/FidelityExportDashboard";
 import { PresetsDashboard }          from "@/components/PresetsDashboard";
 import { PresentScenariosDashboard } from "@/components/PresentScenariosDashboard";
@@ -39,7 +38,7 @@ import { AdminDashboard }            from "@/components/AdminDashboard";
 import { QuantumHardwareTab }        from "@/components/QuantumHardwareTab";
 
 import {
-  Atom, Layers, Activity, Shield, BookOpen, BarChart2,
+  Atom, Layers, Shield, BookOpen, BarChart2,
   TrendingUp, Briefcase, Sparkles, Brain, Zap, Newspaper,
   Wand2, Gauge, KeyRound, Thermometer, LineChart, Cpu,
 } from "lucide-react";
@@ -56,9 +55,8 @@ const TABS = [
   // ── Quantum / Qiskit ─────────────────────────────────────────────────
   { value: "qtbn",           label: "Q-TBN",              icon: Brain },
   { value: "foresight",      label: "Foresight",          icon: Thermometer },
-  { value: "statevector",    label: "Statevector",        icon: Atom },
-  { value: "reduced",        label: "Reduced States",     icon: Layers },
-  { value: "measurement",    label: "Measurement",        icon: Activity },
+  { value: "circuit-inspector", label: "Circuit Inspector", icon: Atom },
+  { value: "reduced",           label: "Reduced States",    icon: Layers },
   { value: "fidelity",       label: "Fidelity & Export",  icon: Shield },
   { value: "presets",        label: "Presets",            icon: BookOpen },
   { value: "scenarios",      label: "Present Scenarios",  icon: BarChart2 },
@@ -195,9 +193,8 @@ function AppLayout() {
 
           {/* Scrollable content area */}
           <div className="flex-1 overflow-y-auto px-6 py-6">
-            <TabsContent value="statevector"    className="mt-0"><StatevectorDashboard /></TabsContent>
-            <TabsContent value="reduced"        className="mt-0"><ReducedStatesDashboard /></TabsContent>
-            <TabsContent value="measurement"    className="mt-0"><MeasurementDashboard /></TabsContent>
+            <TabsContent value="circuit-inspector" className="mt-0"><CircuitInspectorDashboard /></TabsContent>
+            <TabsContent value="reduced"          className="mt-0"><ReducedStatesDashboard /></TabsContent>
             <TabsContent value="fidelity"       className="mt-0"><FidelityExportDashboard /></TabsContent>
             <TabsContent value="presets"        className="mt-0"><PresetsDashboard /></TabsContent>
             <TabsContent value="scenarios"      className="mt-0"><PresentScenariosDashboard /></TabsContent>
