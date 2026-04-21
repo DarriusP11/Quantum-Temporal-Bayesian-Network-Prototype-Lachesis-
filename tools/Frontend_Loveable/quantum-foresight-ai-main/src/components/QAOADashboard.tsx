@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -16,7 +17,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ScatterChart, Scatter, ZAxis
 } from 'recharts';
-import { Zap, TrendingUp, Save, History, AlertCircle, RefreshCw } from "lucide-react";
+import { Zap, TrendingUp, Save, History, AlertCircle, RefreshCw, ChevronDown, ChevronUp, FlaskConical } from "lucide-react";
 
 const BACKENDS = [
   "Classical brute-force",
@@ -33,21 +34,25 @@ const PERSONAS: { label: string; lam: number }[] = [
 const REGIMES = ["None", "Bull regime", "Bear regime", "Shock regime"];
 
 export const QAOADashboard = () => {
-  const [portfolios, setPortfolios]     = useState<string[]>([]);
-  const [portfolio, setPortfolio]       = useState("Toy 3-asset tech portfolio");
-  const [backend, setBackend]           = useState("Classical brute-force");
-  const [depth, setDepth]               = useState(1);
-  const [shots, setShots]               = useState(1024);
-  const [lam, setLam]                   = useState(1.0);
-  const [regime, setRegime]             = useState("None");
-  const [isLoading, setIsLoading]       = useState(false);
-  const [isSweeping, setIsSweeping]     = useState(false);
-  const [result, setResult]             = useState<QAOAOptimizeResponse | null>(null);
-  const [sweepData, setSweepData]       = useState<QAOASweepPoint[]>([]);
-  const [scenarios, setScenarios]       = useState<{ name: string; timestamp?: string }[]>([]);
-  const [logRows, setLogRows]           = useState<Record<string, string>[]>([]);
-  const [scenarioName, setScenarioName] = useState("");
-  const [error, setError]               = useState<string | null>(null);
+  const [portfolios, setPortfolios]         = useState<string[]>([]);
+  const [portfolio, setPortfolio]           = useState("Toy 3-asset tech portfolio");
+  const [backend, setBackend]               = useState("Classical brute-force");
+  const [depth, setDepth]                   = useState(1);
+  const [shots, setShots]                   = useState(1024);
+  const [lam, setLam]                       = useState(1.0);
+  const [regime, setRegime]                 = useState("None");
+  const [isLoading, setIsLoading]           = useState(false);
+  const [isSweeping, setIsSweeping]         = useState(false);
+  const [result, setResult]                 = useState<QAOAOptimizeResponse | null>(null);
+  const [sweepData, setSweepData]           = useState<QAOASweepPoint[]>([]);
+  const [scenarios, setScenarios]           = useState<{ name: string; timestamp?: string }[]>([]);
+  const [logRows, setLogRows]               = useState<Record<string, string>[]>([]);
+  const [scenarioName, setScenarioName]     = useState("");
+  const [error, setError]                   = useState<string | null>(null);
+  // Custom Pauli Hamiltonian
+  const [showCustomH, setShowCustomH]       = useState(false);
+  const [customPauliStr, setCustomPauliStr] = useState("ZZ:1.0, ZI:-0.5, IZ:-0.5");
+  const [useCustomH, setUseCustomH]         = useState(false);
 
   useEffect(() => {
     apiQAOAPortfolios().then(r => setPortfolios(r.portfolios)).catch(() => {});
@@ -66,6 +71,7 @@ export const QAOADashboard = () => {
         lam,
         backend,
         regime: regime === "None" ? null : regime,
+        custom_pauli_str: useCustomH && customPauliStr.trim() ? customPauliStr.trim() : null,
       });
       setResult(res);
     } catch (e: unknown) {
@@ -180,6 +186,50 @@ export const QAOADashboard = () => {
                 min={64} max={8192} step={128}
               />
             </div>
+          </div>
+
+          {/* ── Custom Pauli Hamiltonian ────────────────────────────────── */}
+          <div className="border border-accent/20 rounded-md overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowCustomH(v => !v)}
+              className="w-full flex items-center justify-between px-4 py-2.5 bg-accent/5 hover:bg-accent/10 transition-colors text-sm font-medium"
+            >
+              <span className="flex items-center gap-2">
+                <FlaskConical className="w-4 h-4 text-primary" />
+                Custom Pauli Hamiltonian
+                {useCustomH && (
+                  <Badge className="text-xs bg-primary/20 text-primary border-primary/30 ml-1">Active</Badge>
+                )}
+              </span>
+              {showCustomH ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+
+            {showCustomH && (
+              <div className="px-4 py-3 space-y-3 bg-background/40">
+                <p className="text-xs text-muted-foreground">
+                  Override the portfolio QUBO with a custom Pauli operator, e.g. <code className="font-mono bg-accent/10 px-1 rounded">ZZ:1.0, ZI:-0.5, IZ:-0.5</code>.
+                  Number of qubits = length of the first Pauli word.
+                </p>
+                <Textarea
+                  value={customPauliStr}
+                  onChange={e => setCustomPauliStr(e.target.value)}
+                  className="font-mono text-xs bg-black/30 border-accent/30 min-h-[60px] resize-none"
+                  placeholder="ZZ:1.0, ZI:-0.5, IZ:-0.5"
+                />
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-sm">
+                    <input
+                      type="checkbox"
+                      checked={useCustomH}
+                      onChange={e => setUseCustomH(e.target.checked)}
+                      className="accent-primary"
+                    />
+                    Use custom Hamiltonian instead of portfolio QUBO
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3">

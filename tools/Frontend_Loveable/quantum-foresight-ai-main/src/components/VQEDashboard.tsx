@@ -46,6 +46,7 @@ const ANSATZE = [
   { value: "RealAmplitudes",  label: "Simple Rotations (RealAmplitudes)",  desc: "Lightweight circuit using Y-rotations. Fast and efficient." },
   { value: "EfficientSU2",   label: "Balanced Circuit (EfficientSU2)",     desc: "More expressive than Simple Rotations. Good all-around choice." },
   { value: "TwoLocal",       label: "Full Rotation Circuit (TwoLocal)",    desc: "Both Y and Z rotations. Most expressive, but slowest." },
+  { value: "Custom QASM",    label: "Custom QASM Ansatz",                  desc: "Paste an OpenQASM 2.0 circuit. Must use ParameterVector or θ[i] parameters." },
 ];
 
 const OPTIMIZERS = [
@@ -86,6 +87,9 @@ export const VQEDashboard = () => {
   const [edgesText, setEdgesText]     = useState("0-1:1.0\n1-2:0.8\n0-2:0.6");
   const [isingH, setIsingH]           = useState("0.5, -0.5");
   const [isingJ, setIsingJ]           = useState("0 1 1.0");
+  const [qasmAnsatzStr, setQasmAnsatzStr] = useState(
+    `OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[2];\nry(theta[0]) q[0];\nry(theta[1]) q[1];\ncx q[0],q[1];`
+  );
   const [solveLoading, setSolveLoading] = useState(false);
   const [solveResult, setSolveResult]   = useState<VQESolveResponse | null>(null);
   const [solveError, setSolveError]     = useState<string | null>(null);
@@ -119,6 +123,7 @@ export const VQEDashboard = () => {
         num_qubits: numQubits, reps, maxiter, seed: 42,
         pauli_text: pauliText, maxcut_edges_text: edgesText,
         ising_h_text: isingH, ising_J_text: isingJ,
+        qasm_ansatz_str: ansatzName === "Custom QASM" ? qasmAnsatzStr : undefined,
       });
       setSolveResult(res);
     } catch (e: unknown) {
@@ -342,6 +347,17 @@ export const VQEDashboard = () => {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground leading-snug">{ansatzDesc}</p>
+              {ansatzName === "Custom QASM" && (
+                <div className="mt-2 space-y-1">
+                  <Label className="text-xs text-muted-foreground">Custom QASM ansatz (use theta[i] or θ[i] parameter names)</Label>
+                  <Textarea
+                    value={qasmAnsatzStr}
+                    onChange={e => setQasmAnsatzStr(e.target.value)}
+                    className="font-mono text-xs bg-black/30 border-accent/30 min-h-[100px] resize-y"
+                    spellCheck={false}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="space-y-1">

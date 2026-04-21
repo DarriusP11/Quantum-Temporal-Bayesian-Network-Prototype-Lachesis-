@@ -84,6 +84,7 @@ export interface QuantumSimulateRequest {
   step1?: GateStep;
   step2?: GateStep;
   noise?: NoiseParams;
+  qasm_str?: string;
 }
 
 export interface QuantumSimulateResponse {
@@ -99,6 +100,47 @@ export interface QuantumSimulateResponse {
 
 export const apiQuantumSimulate = (req: QuantumSimulateRequest) =>
   post<QuantumSimulateResponse>("/api/quantum/simulate", req);
+
+export interface QASMValidateResponse {
+  valid: boolean;
+  num_qubits: number;
+  num_clbits: number;
+  depth: number;
+  num_gates: number;
+  circuit_lines: string[];
+  error: string | null;
+}
+export const apiQASMValidate = (qasm_str: string) =>
+  post<QASMValidateResponse>("/api/quantum/qasm-validate", { qasm_str });
+
+// ─── IBM Quantum ──────────────────────────────────────────────────────────────
+export interface IBMBackend {
+  name: string;
+  num_qubits: number | null;
+  operational: boolean;
+  pending_jobs: number;
+  simulator: boolean;
+}
+export interface IBMListBackendsResponse {
+  backends: IBMBackend[];
+  total: number;
+}
+export const apiIBMListBackends = (ibm_token: string) =>
+  post<IBMListBackendsResponse>("/api/ibm/list-backends", { ibm_token });
+
+export interface IBMRunCircuitResponse {
+  backend: string;
+  shots: number;
+  counts: Record<string, number>;
+  probabilities: Record<string, number>;
+  num_qubits: number;
+}
+export const apiIBMRunCircuit = (
+  ibm_token: string,
+  backend_name: string,
+  qasm_str: string,
+  shots: number,
+) => post<IBMRunCircuitResponse>("/api/ibm/run-circuit", { ibm_token, backend_name, qasm_str, shots });
 
 // ─── Advanced Quantum ─────────────────────────────────────────────────────────
 export interface TomographyResponse {
@@ -223,6 +265,7 @@ export interface QAOAOptimizeRequest {
   lam?: number;
   backend?: string;
   regime?: string | null;
+  custom_pauli_str?: string | null;
 }
 
 export interface QAOAOptimizeResponse {
@@ -311,6 +354,7 @@ export interface VQESolveRequest {
   ising_h_text?: string;
   ising_J_text?: string;
   backend_choice?: string;
+  qasm_ansatz_str?: string;
 }
 export interface VQESolveResponse {
   converged: boolean;

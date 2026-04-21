@@ -71,6 +71,13 @@ try:
 except Exception:
     _HAS_QISKIT = False
 
+# ── IBM Quantum Runtime optional imports ─────────────────────────────────────
+try:
+    from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2 as IBMSamplerV2  # type: ignore
+    _HAS_IBM = True
+except Exception:
+    _HAS_IBM = False
+
 # ── QAE optional imports (qiskit-finance) ────────────────────────────────────
 _HAS_QAE = False
 _IAE     = None   # IterativeAmplitudeEstimation
@@ -102,6 +109,7 @@ except ImportError:
 try:
     from qaoa_scenario1 import (
         run_qaoa_portfolio,
+        run_qaoa_custom_hamiltonian,
         get_qaoa_portfolio_config,
         apply_regime_to_cfg,
         lambda_sweep_classical,
@@ -301,6 +309,7 @@ class QuantumSimulateRequest(BaseModel):
     step1: GateStep = GateStep()
     step2: GateStep = GateStep()
     noise: NoiseParams = NoiseParams()
+    qasm_str: Optional[str] = None  # OpenQASM 2.0 source; overrides gate steps when set
 
 
 def _apply_gate(qc, qubit: int, gate: str, angle: float):
@@ -317,6 +326,15 @@ def _apply_gate(qc, qubit: int, gate: str, angle: float):
 
 
 def _build_circuit(req: QuantumSimulateRequest, measure: bool = False):
+    # ── QASM path ──────────────────────────────────────────────────────────────
+    if req.qasm_str and req.qasm_str.strip():
+        qc = QuantumCircuit.from_qasm_str(req.qasm_str)
+        if measure and qc.num_clbits == 0:
+            qc.add_register(__import__("qiskit").circuit.ClassicalRegister(qc.num_qubits))
+            qc.measure(range(qc.num_qubits), range(qc.num_qubits))
+        return qc
+
+    # ── Gate-step path (default) ───────────────────────────────────────────────
     nq = req.num_qubits
     qc = QuantumCircuit(nq, nq)
     steps = [req.step0, req.step1, req.step2]
@@ -420,6 +438,32 @@ def quantum_simulate(req: QuantumSimulateRequest):
         }
     except Exception as e:
         raise HTTPException(500, f"Quantum simulation error: {e}")
+
+
+class QASMValidateRequest(BaseModel):
+    qasm_str: str
+
+
+@app.post("/api/quantum/qasm-validate")
+def qasm_validate(req: QASMValidateRequest):
+    """Parse an OpenQASM 2.0 string and return circuit metadata or an error message."""
+    if not _HAS_QISKIT:
+        raise HTTPException(503, "Qiskit not available on this server")
+    try:
+        qc = QuantumCircuit.from_qasm_str(req.qasm_str)
+        circuit_lines = str(qc.draw(output="text", fold=-1)).splitlines()
+        return {
+            "valid": True,
+            "num_qubits": qc.num_qubits,
+            "num_clbits": qc.num_clbits,
+            "depth": qc.depth(),
+            "num_gates": sum(1 for instr in qc.data if instr.operation.name not in ("barrier", "measure")),
+            "circuit_lines": circuit_lines,
+            "error": None,
+        }
+    except Exception as e:
+        return {"valid": False, "num_qubits": 0, "num_clbits": 0, "depth": 0,
+                "num_gates": 0, "circuit_lines": [], "error": str(e)}
 
 
 # ── Advanced Quantum ──────────────────────────────────────────────────────────
@@ -953,6 +997,7 @@ class QAOAOptimizeRequest(BaseModel):
     lam: float = Field(1.0, ge=0.1, le=2.0)
     backend: str = "Classical brute-force"
     regime: Optional[str] = None
+    custom_pauli_str: Optional[str] = None  # e.g. "ZZ:1.0, XI:0.5"; overrides portfolio QUBO
 
 
 class QAOASweepRequest(BaseModel):
@@ -986,6 +1031,18 @@ def qaoa_optimize(req: QAOAOptimizeRequest):
     if not _HAS_QAOA:
         raise HTTPException(503, f"QAOA module unavailable")
     try:
+        # ── Custom Pauli Hamiltonian path ─────────────────────────────────────
+        if req.custom_pauli_str and req.custom_pauli_str.strip():
+            result = run_qaoa_custom_hamiltonian(
+                pauli_text=req.custom_pauli_str,
+                depth=req.depth,
+                shots=req.shots,
+                backend=req.backend,
+            )
+            result["shots"] = req.shots
+            return {**_np_to_py(result), "narrative": f"Custom Hamiltonian: {req.custom_pauli_str[:80]}", "assets": result.get("selected_assets", [])}
+
+        # ── Standard portfolio path ───────────────────────────────────────────
         cfg = get_qaoa_portfolio_config(req.portfolio)
         if req.regime:
             cfg = apply_regime_to_cfg(cfg, req.regime)
@@ -1158,6 +1215,7 @@ class VQESolveRequest(BaseModel):
     ising_h_text: str = "0.5, -0.5"
     ising_J_text: str = "0 1 1.0"
     backend_choice: str = "Estimator (default)"
+    qasm_ansatz_str: Optional[str] = None  # OpenQASM 2.0 ansatz; used when ansatz_name == "Custom QASM"
 
 
 @app.post("/api/vqe/solve")
@@ -1185,6 +1243,7 @@ def vqe_solve(req: VQESolveRequest):
             maxiter=req.maxiter,
             backend_choice=req.backend_choice,
             seed=req.seed,
+            qasm_ansatz_str=req.qasm_ansatz_str,
         )
 
         used_fallback = False
@@ -2580,6 +2639,91 @@ def billing_health():
             result["supabase_ok"] = False
 
     return result
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# IBM QUANTUM RUNTIME
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class IBMListBackendsRequest(BaseModel):
+    ibm_token: str
+
+
+class IBMRunCircuitRequest(BaseModel):
+    ibm_token: str
+    backend_name: str
+    qasm_str: str
+    shots: int = Field(1024, ge=64, le=20000)
+
+
+@app.post("/api/ibm/list-backends")
+def ibm_list_backends(req: IBMListBackendsRequest):
+    """List available IBM Quantum backends for the given API token."""
+    if not _HAS_IBM:
+        raise HTTPException(503, "qiskit-ibm-runtime is not installed on this server")
+    try:
+        service = QiskitRuntimeService(channel="ibm_quantum", token=req.ibm_token)
+        backends = service.backends()
+        result = []
+        for b in backends:
+            status = b.status()
+            result.append({
+                "name": b.name,
+                "num_qubits": b.num_qubits if hasattr(b, "num_qubits") else None,
+                "operational": status.operational if hasattr(status, "operational") else True,
+                "pending_jobs": status.pending_jobs if hasattr(status, "pending_jobs") else 0,
+                "simulator": b.name.startswith("ibmq_qasm") or b.name.startswith("simulator"),
+            })
+        return {"backends": result, "total": len(result)}
+    except Exception as e:
+        raise HTTPException(500, f"IBM backend list error: {e}")
+
+
+@app.post("/api/ibm/run-circuit")
+def ibm_run_circuit(req: IBMRunCircuitRequest):
+    """
+    Submit an OpenQASM 2.0 circuit to a real IBM Quantum backend and return counts.
+    Uses a per-request (non-cached) QiskitRuntimeService instance for safety.
+    """
+    if not _HAS_QISKIT:
+        raise HTTPException(503, "Qiskit not installed")
+    if not _HAS_IBM:
+        raise HTTPException(503, "qiskit-ibm-runtime is not installed on this server")
+    try:
+        qc = QuantumCircuit.from_qasm_str(req.qasm_str)
+        if qc.num_clbits == 0:
+            import qiskit as _qiskit
+            qc.add_register(_qiskit.circuit.ClassicalRegister(qc.num_qubits))
+            qc.measure(range(qc.num_qubits), range(qc.num_qubits))
+
+        service = QiskitRuntimeService(channel="ibm_quantum", token=req.ibm_token)
+        backend = service.backend(req.backend_name)
+        sampler = IBMSamplerV2(backend)
+
+        t_qc = transpile(qc, backend)
+        job = sampler.run([t_qc], shots=req.shots)
+        result = job.result()
+
+        # SamplerV2 result structure: result[0].data.meas.get_counts()
+        pub_result = result[0]
+        counts_raw: Dict[str, int] = {}
+        for attr in vars(pub_result.data):
+            bit_array = getattr(pub_result.data, attr)
+            if hasattr(bit_array, "get_counts"):
+                counts_raw = bit_array.get_counts()
+                break
+
+        total = sum(counts_raw.values()) or 1
+        probs = {k: v / total for k, v in counts_raw.items()}
+        return {
+            "backend": req.backend_name,
+            "shots": req.shots,
+            "counts": counts_raw,
+            "probabilities": probs,
+            "num_qubits": qc.num_qubits,
+        }
+    except Exception as e:
+        raise HTTPException(500, f"IBM circuit run error: {e}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

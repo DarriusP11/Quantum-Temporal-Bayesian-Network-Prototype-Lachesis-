@@ -962,8 +962,17 @@ def _build_hamiltonian(pauli_list: List[Tuple[str, float]]) -> Tuple[Any, str]:
     raise RuntimeError("Unable to construct Hamiltonian (SparsePauliOp/PauliSumOp not available).")
 
 
-def _build_ansatz(ansatz_name: str, num_qubits: int, reps: int) -> Tuple[Any, str, int]:
+def _build_ansatz(ansatz_name: str, num_qubits: int, reps: int, qasm_str: Optional[str] = None) -> Tuple[Any, str, int]:
     ansatz_name = str(ansatz_name)
+
+    # ── Custom QASM ansatz ────────────────────────────────────────────────────
+    if ansatz_name.startswith("Custom QASM") or ansatz_name.startswith("CustomQASM"):
+        if not qasm_str or not qasm_str.strip():
+            raise ValueError("Custom QASM ansatz selected but no QASM string was provided.")
+        from qiskit import QuantumCircuit as _QC  # type: ignore
+        ansatz = _QC.from_qasm_str(qasm_str)
+        n_params = int(getattr(ansatz, "num_parameters", 0))
+        return ansatz, f"CustomQASM({ansatz.num_qubits}q,{n_params}params)", n_params
 
     if ansatz_name.startswith("TwoLocal"):
         from qiskit.circuit.library import TwoLocal  # type: ignore
@@ -1327,6 +1336,7 @@ def _try_run_real_vqe(
     maxiter: int,
     backend_choice: str,
     seed: Optional[int],
+    qasm_ansatz_str: Optional[str] = None,
 ) -> Tuple[bool, float, Dict[str, Any], str, List[Dict[str, Any]]]:
     history: List[Dict[str, Any]] = []
 
@@ -1338,7 +1348,7 @@ def _try_run_real_vqe(
         if estimator is None:
             return False, float("nan"), {}, estimator_name, history
 
-        ansatz, ansatz_desc, n_params = _build_ansatz(ansatz_name, int(num_qubits), int(reps))
+        ansatz, ansatz_desc, n_params = _build_ansatz(ansatz_name, int(num_qubits), int(reps), qasm_str=qasm_ansatz_str)
         optimizer, opt_desc = _build_optimizer(optimizer_name, int(maxiter), seed=seed)
 
         try:

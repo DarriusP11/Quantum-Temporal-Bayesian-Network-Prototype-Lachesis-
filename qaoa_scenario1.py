@@ -300,6 +300,137 @@ def run_qaoa_portfolio(
 
 
 # -------------------------------
+# Custom Pauli Hamiltonian QAOA
+# -------------------------------
+
+
+def _parse_custom_pauli(pauli_text: str) -> List[tuple]:
+    """Parse 'ZZ:1.0, XI:0.4, IX:0.4' → [(coef, pauli_str), ...]"""
+    terms = []
+    for token in pauli_text.replace(";", ",").split(","):
+        token = token.strip()
+        if not token:
+            continue
+        if ":" in token:
+            pauli_part, coef_part = token.rsplit(":", 1)
+        else:
+            parts = token.split()
+            if len(parts) == 2:
+                pauli_part, coef_part = parts[0], parts[1]
+            else:
+                continue
+        terms.append((float(coef_part.strip()), pauli_part.strip().upper()))
+    return terms
+
+
+def run_qaoa_custom_hamiltonian(
+    pauli_text: str,
+    depth: int,
+    shots: int,
+    backend: str,
+) -> dict:
+    """
+    Run QAOA (or brute-force) directly on a user-supplied Pauli string Hamiltonian.
+
+    The number of qubits is inferred from the length of the first Pauli word.
+    Returns a result dict compatible with the QAOA endpoint response shape.
+    """
+    terms = _parse_custom_pauli(pauli_text)
+    if not terms:
+        raise ValueError("No valid Pauli terms found in the input string.")
+
+    n_qubits = len(terms[0][1])
+
+    # ── Classical brute-force over all 2^n bitstrings ────────────────────────
+    def eval_hamiltonian(bitstring: str) -> float:
+        """Compute ⟨ψ|H|ψ⟩ for a computational basis state."""
+        energy = 0.0
+        for coef, pauli in terms:
+            val = 1.0
+            for bit_char, p_char in zip(bitstring, pauli):
+                z = 1 if bit_char == "0" else -1  # Z eigenvalue
+                if p_char == "Z":
+                    val *= z
+                elif p_char == "I":
+                    pass
+                else:
+                    val = 0.0; break  # X/Y flip out of diagonal basis
+            energy += coef * val
+        return energy
+
+    if backend == "Classical brute-force" or not _HAS_QISKIT_OPT:
+        best_e, best_bits = float("inf"), "0" * n_qubits
+        for i in range(2 ** n_qubits):
+            bits = format(i, f"0{n_qubits}b")
+            e = eval_hamiltonian(bits)
+            if e < best_e:
+                best_e, best_bits = e, bits
+        return {
+            "bitstring": best_bits,
+            "selected_assets": [f"q{i}" for i, b in enumerate(best_bits) if b == "1"] or ["(none)"],
+            "expected_return": 0.0,
+            "risk": 0.0,
+            "objective": -best_e,
+            "energy": best_e,
+            "backend": "Classical brute-force (custom Hamiltonian)",
+            "lam": 1.0,
+            "num_qubits": n_qubits,
+            "pauli_terms": [{"coef": c, "pauli": p} for c, p in terms],
+        }
+
+    # ── QAOA path ─────────────────────────────────────────────────────────────
+    try:
+        from qiskit.quantum_info import SparsePauliOp  # type: ignore
+        from qiskit.algorithms.minimum_eigensolvers import QAOA, NumPyMinimumEigensolver  # type: ignore
+        from qiskit.algorithms.optimizers import COBYLA  # type: ignore
+
+        hamiltonian = SparsePauliOp.from_list([(p, c) for c, p in terms])
+
+        try:
+            from qiskit_aer.primitives import Sampler as AerSampler  # type: ignore
+            sampler = AerSampler(shots=shots)
+            label = "QAOA (Aer Sampler, custom H)"
+        except Exception:
+            from qiskit.primitives import Sampler  # type: ignore
+            sampler = Sampler()
+            label = "QAOA (Sampler, custom H)"
+
+        qaoa = QAOA(sampler=sampler, reps=depth, optimizer=COBYLA(maxiter=100))
+        result = qaoa.compute_minimum_eigenvalue(hamiltonian)
+        energy = float(np.real(result.eigenvalue))
+
+        # Read most probable bitstring from eigenstate distribution
+        if hasattr(result, "eigenstate") and hasattr(result.eigenstate, "binary_probabilities"):
+            probs = result.eigenstate.binary_probabilities()
+            best_bits = max(probs, key=probs.__getitem__)
+        else:
+            best_bits = "0" * n_qubits
+    except Exception:
+        # Final fallback
+        best_e, best_bits = float("inf"), "0" * n_qubits
+        for i in range(2 ** n_qubits):
+            bits = format(i, f"0{n_qubits}b")
+            e = eval_hamiltonian(bits)
+            if e < best_e:
+                best_e, best_bits = e, bits
+        energy = best_e
+        label = "Classical fallback (custom H)"
+
+    return {
+        "bitstring": best_bits,
+        "selected_assets": [f"q{i}" for i, b in enumerate(best_bits) if b == "1"] or ["(none)"],
+        "expected_return": 0.0,
+        "risk": 0.0,
+        "objective": -energy,
+        "energy": energy,
+        "backend": label,
+        "lam": 1.0,
+        "num_qubits": n_qubits,
+        "pauli_terms": [{"coef": c, "pauli": p} for c, p in terms],
+    }
+
+
+# -------------------------------
 # Logging + λ-sweep
 # -------------------------------
 

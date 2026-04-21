@@ -25,6 +25,7 @@ const KEY_SPECS: KeySpec[] = [
   { service: "voice_openai",label: "Voice OpenAI Key",        placeholder: "sk-...",        hint: "TTS/STT for Lachesis voice panel" },
   { service: "voice_elevenlabs", label: "ElevenLabs Key",     placeholder: "xi-...",        hint: "High-quality voice synthesis" },
   { service: "serpapi",     label: "SerpAPI Key",             placeholder: "serpapi key...", hint: "Google search for Lachesis AI real-time market data" },
+  { service: "ibm_quantum", label: "IBM Quantum API Token",   placeholder: "IBM token...",  hint: "Used per-request for Circuit Inspector → IBM Hardware tab" },
 ];
 
 type KeyStatus = "unconfigured" | "valid" | "invalid";
