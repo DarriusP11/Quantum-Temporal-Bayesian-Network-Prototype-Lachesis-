@@ -147,6 +147,12 @@ try:
 except Exception:
     _HAS_FORESIGHT = False
 
+try:
+    from credit_risk import run_credit_risk_analysis, PRESET_BORROWERS
+    _HAS_CREDIT_RISK = True
+except Exception:
+    _HAS_CREDIT_RISK = False
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # HELPERS
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -2639,6 +2645,63 @@ def billing_health():
             result["supabase_ok"] = False
 
     return result
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CREDIT RISK ANALYSIS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class CreditRiskObligorInput(BaseModel):
+    name: str
+    ticker: str
+    sector: str
+    sp_rating: str
+    loan_usd: float = Field(100_000, gt=0)
+    fico_score: int = Field(700, ge=300, le=850)
+    pd_override: Optional[float] = None
+    lgd_override: Optional[float] = None
+    rho_override: Optional[float] = None
+
+
+class CreditRiskRequest(BaseModel):
+    obligors: Optional[List[CreditRiskObligorInput]] = None
+    use_presets: bool = True
+    confidence: float = Field(0.95, ge=0.80, le=0.99)
+    horizon_years: float = Field(1.0, ge=0.25, le=5.0)
+    stress_multiplier: float = Field(1.0, ge=0.5, le=3.0)
+    use_quantum: bool = True
+    n_z: int = Field(2, ge=1, le=4)
+    shots: int = Field(100, ge=50, le=1000)
+
+
+@app.get("/api/credit-risk/presets")
+def credit_risk_presets():
+    if not _HAS_CREDIT_RISK:
+        raise HTTPException(503, "credit_risk module not available")
+    return {"presets": PRESET_BORROWERS}
+
+
+@app.post("/api/credit-risk/analyze")
+def credit_risk_analyze(req: CreditRiskRequest):
+    if not _HAS_CREDIT_RISK:
+        raise HTTPException(503, "credit_risk module not available")
+    try:
+        if req.use_presets or not req.obligors:
+            obligors = PRESET_BORROWERS
+        else:
+            obligors = [o.dict() for o in req.obligors]
+        result = run_credit_risk_analysis(
+            obligors=obligors,
+            confidence=req.confidence,
+            horizon_years=req.horizon_years,
+            stress_multiplier=req.stress_multiplier,
+            use_quantum=req.use_quantum,
+            n_z=req.n_z,
+            shots=req.shots,
+        )
+        return _np_to_py(result)
+    except Exception as e:
+        raise HTTPException(500, f"Credit risk analysis error: {e}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

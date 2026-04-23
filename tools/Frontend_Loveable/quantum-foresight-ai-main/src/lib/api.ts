@@ -580,3 +580,80 @@ export const apiEdgarLookupCIK = (ticker: string, user_agent: string) =>
   post<EdgarCIKResponse>("/api/insider/lookup-cik", { ticker, user_agent });
 export const apiEdgarFilings = (cik: string, forms: string[], user_agent: string, max_results = 50) =>
   post<EdgarLoadResponse>("/api/insider/filings", { cik, forms, user_agent, max_results });
+
+// ── Credit Risk Analysis ───────────────────────────────────────────────────
+
+export interface CreditRiskObligorInput {
+  name: string;
+  ticker: string;
+  sector: string;
+  sp_rating: string;
+  loan_usd: number;
+  fico_score?: number;
+  pd_override?: number;
+  lgd_override?: number;
+  rho_override?: number;
+}
+
+export interface CreditRiskObligorResult {
+  name: string;
+  ticker: string;
+  sp_rating: string;
+  sector: string;
+  loan_usd: number;
+  lgd_pct: number;
+  lgd_usd: number;
+  pd_base_pct: number;
+  pd_adj_pct: number;
+  rho: number;
+  el_own_usd: number;
+}
+
+export interface CreditRiskRequest {
+  obligors?: CreditRiskObligorInput[];
+  use_presets?: boolean;
+  confidence?: number;
+  horizon_years?: number;
+  stress_multiplier?: number;
+  use_quantum?: boolean;
+  n_z?: number;
+  shots?: number;
+}
+
+export interface CreditRiskSource {
+  title: string;
+  url: string;
+  description: string;
+}
+
+export interface CreditRiskResponse {
+  obligors: CreditRiskObligorResult[];
+  total_exposure_usd: number;
+  confidence: number;
+  horizon_years: number;
+  stress_multiplier: number;
+  mc: {
+    expected_loss_usd: number;
+    var_usd: number;
+    cvar_usd: number;
+    paths: number;
+  };
+  quantum: {
+    used: boolean;
+    el_usd: number | null;
+    cvar_usd: number | null;
+    circuit_info: Record<string, unknown> | null;
+    error: string | null;
+    available: boolean;
+  };
+  histogram: Array<{ loss_usd: number; probability: number; label: string }>;
+  percentile_table: Array<{ label: string; loss_usd: number }>;
+  multi_default_prob: number;
+  sources: CreditRiskSource[];
+}
+
+export const apiCreditRiskPresets = () =>
+  get<{ presets: CreditRiskObligorInput[] }>("/api/credit-risk/presets");
+
+export const apiCreditRiskAnalyze = (req: CreditRiskRequest) =>
+  post<CreditRiskResponse>("/api/credit-risk/analyze", req);

@@ -28,6 +28,7 @@ import { AdvancedQuantumDashboard }  from "@/components/AdvancedQuantumDashboard
 import { ForesightDashboard }        from "@/components/ForesightDashboard";
 import { FinancialDashboard }        from "@/components/FinancialDashboard";
 import { InsiderTradingDashboard }   from "@/components/InsiderTradingDashboard";
+import { CreditRiskDashboard }       from "@/components/CreditRiskDashboard";
 import { QTBNDashboard }             from "@/components/QTBNDashboard";
 import { QAOADashboard }             from "@/components/QAOADashboard";
 import { SentimentDashboard }        from "@/components/SentimentDashboard";
@@ -39,7 +40,7 @@ import { QuantumHardwareTab }        from "@/components/QuantumHardwareTab";
 
 import {
   Atom, Layers, Shield, BookOpen, BarChart2,
-  TrendingUp, Briefcase, Sparkles, Brain, Zap, Newspaper,
+  TrendingUp, TrendingDown, Briefcase, Sparkles, Brain, Zap, Newspaper,
   Wand2, Gauge, KeyRound, Thermometer, LineChart, Cpu,
 } from "lucide-react";
 
@@ -51,6 +52,7 @@ const TABS = [
   { value: "finance",        label: "Financial Analytics",icon: TrendingUp },
   { value: "insider",        label: "Insider Trading",    icon: Briefcase },
   { value: "sentiment",      label: "Sentiment Analysis", icon: Newspaper },
+  { value: "credit-risk",    label: "Credit Risk",        icon: TrendingDown },
   { value: "prompt-studio",  label: "Prompt Studio",      icon: Wand2 },
   // ── Quantum / Qiskit ─────────────────────────────────────────────────
   { value: "qtbn",           label: "Q-TBN",              icon: Brain },
@@ -67,7 +69,7 @@ const TABS = [
 ] as const;
 
 // ── Subscription gating ──────────────────────────────────────────────────────
-const PRO_TABS        = new Set(["qaoa", "vqe"]);
+const PRO_TABS        = new Set(["qaoa", "vqe", "credit-risk"]);
 const ENTERPRISE_TABS = new Set(["quantum-hardware"]);
 
 function LanguageSelector() {
@@ -209,6 +211,11 @@ function AppLayout() {
                 : <LockedTabOverlay requiredPlan="pro" tabName="Toy QAOA" onUpgrade={() => openUpgrade("pro")} />}
             </TabsContent>
             <TabsContent value="sentiment"      className="mt-0"><SentimentDashboard /></TabsContent>
+            <TabsContent value="credit-risk" className="mt-0">
+              {subscription.is_pro || subscription.is_enterprise
+                ? <CreditRiskDashboard />
+                : <LockedTabOverlay requiredPlan="pro" tabName="Credit Risk" onUpgrade={() => openUpgrade("pro")} />}
+            </TabsContent>
             <TabsContent value="prompt-studio"  className="mt-0"><PromptStudioDashboard /></TabsContent>
             <TabsContent value="vqe" className="mt-0">
               {subscription.is_pro || subscription.is_enterprise
