@@ -25,6 +25,30 @@ import {
 const SP_RATINGS = ["AAA", "AA+", "AA", "AA-", "A+", "A", "A-", "BBB+", "BBB", "BBB-",
   "BB+", "BB", "BB-", "B+", "B", "B-", "CCC+", "CCC", "CCC-", "CC", "C", "D"];
 
+// Mirrors credit_risk.py _FICO_BANDS
+const FICO_BANDS: [number, number, string][] = [
+  [800, 851, "AA / AA+"],
+  [750, 800, "A / A+"],
+  [700, 750, "BBB+ / A−"],
+  [670, 700, "BBB / BBB−"],
+  [620, 670, "BB+ / BB"],
+  [580, 620, "BB− / B+"],
+  [550, 580, "B"],
+  [300, 550, "B− / CCC"],
+];
+
+const ficoToLabel = (score: number): string => {
+  const band = FICO_BANDS.find(([lo, hi]) => score >= lo && score < hi);
+  return band ? band[2] : "B− / CCC";
+};
+
+const ficoColor = (score: number): string => {
+  if (score >= 750) return "text-green-400 border-green-500/30";
+  if (score >= 670) return "text-blue-400 border-blue-500/30";
+  if (score >= 580) return "text-amber-400 border-amber-500/30";
+  return "text-red-400 border-red-500/30";
+};
+
 const HORIZON_OPTIONS = [
   { value: "0.25", label: "3 months" },
   { value: "0.5",  label: "6 months" },
@@ -91,6 +115,13 @@ export const CreditRiskDashboard = () => {
     setObligors(prev => prev.map((o, i) => i === idx ? { ...o, [field]: val } : o));
   };
 
+  // When FICO changes, clear pd_override so the backend uses fico_to_pd() instead
+  const updateFico = (idx: number, score: number) => {
+    setObligors(prev => prev.map((o, i) =>
+      i === idx ? { ...o, fico_score: score, pd_override: undefined } : o
+    ));
+  };
+
   const runAnalysis = async () => {
     setLoading(true);
     setError(null);
@@ -144,6 +175,36 @@ export const CreditRiskDashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                {/* FICO slider — primary PD driver when changed */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <Label className="text-xs">FICO Score</Label>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-mono font-bold">{ob.fico_score ?? 700}</span>
+                      <Badge
+                        variant="outline"
+                        className={`text-xs px-1.5 py-0 ${ficoColor(ob.fico_score ?? 700)}`}
+                      >
+                        {ficoToLabel(ob.fico_score ?? 700)}
+                      </Badge>
+                    </div>
+                  </div>
+                  <Slider
+                    min={300} max={850} step={5}
+                    value={[ob.fico_score ?? 700]}
+                    onValueChange={([v]) => updateFico(idx, v)}
+                    className="mt-1"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                    <span>300</span><span>Poor · Fair · Good · Very Good · Exceptional</span><span>850</span>
+                  </div>
+                  {ob.pd_override == null && (
+                    <p className="text-xs text-primary/70 mt-1">
+                      PD derived from FICO band
+                    </p>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <Label className="text-xs">S&P Rating</Label>
@@ -162,10 +223,29 @@ export const CreditRiskDashboard = () => {
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-xs">FICO Score</Label>
-                    <div className="flex items-center gap-1 mt-1">
-                      <Badge variant="outline" className="h-7 px-2 text-xs font-mono w-full justify-center">
-                        {ob.fico_score ?? 700}
+                    <Label className="text-xs">PD Source</Label>
+                    <div className="mt-1">
+                      <Badge
+                        variant="outline"
+                        className="h-7 px-2 text-xs w-full justify-center cursor-pointer border-accent/30"
+                        onClick={() => {
+                          // Toggle: if pd_override is cleared (FICO mode), restore it from rating
+                          if (ob.pd_override == null) {
+                            // revert to S&P rating-based PD by restoring pd_override
+                            const ratingPd: Record<string,number> = {
+                              "AAA":0.00010,"AA+":0.00015,"AA":0.00020,"AA-":0.00025,
+                              "A+":0.00030,"A":0.00050,"A-":0.00080,"BBB+":0.00120,
+                              "BBB":0.00180,"BBB-":0.00280,"BB+":0.00500,"BB":0.00900,
+                              "BB-":0.01400,"B+":0.02200,"B":0.03500,"B-":0.05500,
+                              "CCC+":0.10000,"CCC":0.16000,"CCC-":0.25000,"CC":0.40000,
+                            };
+                            updateObligor(idx, "pd_override", ratingPd[ob.sp_rating] ?? 0.005);
+                          } else {
+                            updateObligor(idx, "pd_override", undefined as unknown as number);
+                          }
+                        }}
+                      >
+                        {ob.pd_override != null ? "S&P Rating ✓" : "FICO Band ✓"}
                       </Badge>
                     </div>
                   </div>

@@ -310,7 +310,7 @@ def _quantum_credit_risk(
         rhos=rho_list,
     )
 
-    agg = WeightedAdder(n=K, weights=lgd_int)
+    agg = WeightedAdder(num_state_qubits=K, weights=lgd_int)
     n_sum   = agg.num_sum_qubits
     n_carry = agg.num_carry_qubits
     max_loss_units = sum(lgd_int)
@@ -425,16 +425,27 @@ def run_credit_risk_analysis(
 
     for ob in obligors:
         loan   = float(ob.get("loan_usd", 100_000))
-        lgd_fr = float(ob.get("lgd", 0.50))
-        rho    = float(ob.get("rho", 0.25))
         sector = ob.get("sector", "Other")
 
-        # Default probability
-        if "pd_1yr" in ob and ob["pd_1yr"] is not None:
+        # LGD — accept both key name conventions
+        lgd_raw = ob.get("lgd") if ob.get("lgd") is not None else ob.get("lgd_override")
+        lgd_fr  = float(lgd_raw) if lgd_raw is not None else _SECTOR_LGD.get(sector, 0.50)
+
+        # Rho — accept both key name conventions
+        rho_raw = ob.get("rho") if ob.get("rho") is not None else ob.get("rho_override")
+        rho     = float(rho_raw) if rho_raw is not None else sector_to_rho(sector)
+
+        # Default probability — priority: pd_1yr > pd_override > fico_score > fico_equiv > sector default
+        if ob.get("pd_1yr") is not None:
             pd_base = float(ob["pd_1yr"])
-            rating  = "Custom"
-        elif "fico_score" in ob and ob["fico_score"] is not None:
+            rating  = ob.get("sp_rating", "Custom")
+        elif ob.get("pd_override") is not None:
+            pd_base = float(ob["pd_override"])
+            rating  = ob.get("sp_rating", "Custom")
+        elif ob.get("fico_score") is not None:
             pd_base, rating = fico_to_pd(int(ob["fico_score"]))
+        elif ob.get("fico_equiv") is not None:
+            pd_base, rating = fico_to_pd(int(ob["fico_equiv"]))
         else:
             pd_base, rating = 0.005, "Unknown"
 
