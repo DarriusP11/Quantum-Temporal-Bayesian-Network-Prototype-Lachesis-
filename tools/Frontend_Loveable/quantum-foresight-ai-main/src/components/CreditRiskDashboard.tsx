@@ -559,16 +559,6 @@ export const CreditRiskDashboard = () => {
               <CardTitle className="text-sm flex items-center gap-2">
                 <ExternalLink className="w-4 h-4 text-primary" />
                 Sources &amp; Methodology
-                <a
-                  href="/Credit_Risk_Tab_Technical_Reference.docx"
-                  download="Credit_Risk_Tab_Technical_Reference.docx"
-                  className="ml-auto"
-                >
-                  <Button size="sm" variant="outline" className="h-6 text-xs px-2 gap-1 border-primary/30 text-primary hover:bg-primary/10">
-                    <ExternalLink className="w-3 h-3" />
-                    Download Technical Doc
-                  </Button>
-                </a>
               </CardTitle>
             </CardHeader>
             <CardContent>
