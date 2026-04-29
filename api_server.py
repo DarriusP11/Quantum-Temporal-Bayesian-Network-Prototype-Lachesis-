@@ -121,6 +121,7 @@ try:
         generate_portfolio_narrative,
         TOY_QAOA_PORTFOLIO,
         LACHESIS_BENCHMARK_PORTFOLIO,
+        MAG7_PORTFOLIO,
     )
     _HAS_QAOA = True
 except Exception as _qaoa_err:
@@ -1022,13 +1023,18 @@ class QAOASaveScenarioRequest(BaseModel):
 
 @app.get("/api/qaoa/portfolios")
 def qaoa_portfolios():
+    portfolios = [
+        "Toy 3-asset tech portfolio",
+        "Lachesis benchmark (equities + bond + gold)",
+        "Magnificent 7",
+    ]
     if not _HAS_QAOA:
-        return {"portfolios": ["Toy 3-asset tech portfolio", "Lachesis benchmark (equities + bond + gold)"],
-                "note": "QAOA module unavailable – classical fallback will be used"}
+        return {"portfolios": portfolios, "note": "QAOA module unavailable – classical fallback will be used"}
     return {
-        "portfolios": ["Toy 3-asset tech portfolio", "Lachesis benchmark (equities + bond + gold)"],
+        "portfolios": portfolios,
         "toy": _np_to_py(TOY_QAOA_PORTFOLIO),
         "benchmark": _np_to_py(LACHESIS_BENCHMARK_PORTFOLIO),
+        "mag7": _np_to_py(MAG7_PORTFOLIO),
     }
 
 

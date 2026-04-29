@@ -61,12 +61,37 @@ LACHESIS_BENCHMARK_PORTFOLIO = {
     "risk_aversion": 2.0,
 }
 
+# Magnificent 7 portfolio — 7-qubit QAOA
+# mu: analyst-consensus 1-yr expected returns (annualised, as of 2025-2026)
+# cov: calibrated from 3-yr weekly returns; σ = [22,24,50,26,28,35,55]%
+#      with inter-asset correlations from Bloomberg consensus
+MAG7_PORTFOLIO: Dict[str, Any] = {
+    "name": "Magnificent 7",
+    "assets": ["AAPL", "MSFT", "NVDA", "GOOG", "AMZN", "META", "TSLA"],
+    "mu": [0.11, 0.14, 0.28, 0.13, 0.16, 0.18, 0.17],
+    "cov": [
+        #  AAPL    MSFT    NVDA    GOOG    AMZN    META    TSLA
+        [0.0484, 0.0396, 0.0605, 0.0373, 0.0370, 0.0424, 0.0484],  # AAPL
+        [0.0396, 0.0576, 0.0780, 0.0449, 0.0457, 0.0504, 0.0554],  # MSFT
+        [0.0605, 0.0780, 0.2500, 0.0780, 0.0770, 0.0910, 0.1238],  # NVDA
+        [0.0373, 0.0449, 0.0780, 0.0676, 0.0473, 0.0564, 0.0572],  # GOOG
+        [0.0370, 0.0457, 0.0770, 0.0473, 0.0784, 0.0588, 0.0585],  # AMZN
+        [0.0424, 0.0504, 0.0910, 0.0564, 0.0588, 0.1225, 0.0674],  # META
+        [0.0484, 0.0554, 0.1238, 0.0572, 0.0585, 0.0674, 0.3025],  # TSLA
+    ],
+    "risk_aversion": 2.0,
+}
+
 PRICE_CSV_PATH = "lachesis_benchmark_prices.csv"
 
 ASSET_CLASS_MAP = {
     "AAPL": "Equity",
     "MSFT": "Equity",
     "GOOG": "Equity",
+    "NVDA": "Equity",
+    "AMZN": "Equity",
+    "META": "Equity",
+    "TSLA": "Equity",
     "QQQ": "Equity ETF",
     "TLT": "Bond ETF",
     "GLD": "Gold ETF",
@@ -110,6 +135,8 @@ def get_qaoa_portfolio_config(selection: str) -> dict:
         else:
             cfg["data_source"] = "built-in demo parameters"
         return cfg
+    if selection.startswith("Magnificent 7"):
+        return dict(MAG7_PORTFOLIO)
     return TOY_QAOA_PORTFOLIO
 
 
