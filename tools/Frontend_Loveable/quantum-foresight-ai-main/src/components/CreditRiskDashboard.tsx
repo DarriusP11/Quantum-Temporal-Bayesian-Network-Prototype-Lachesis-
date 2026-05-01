@@ -13,7 +13,7 @@ import {
 } from "recharts";
 import {
   TrendingDown, DollarSign, AlertCircle, CheckCircle,
-  Activity, ExternalLink, Atom, RefreshCw,
+  Activity, Atom, RefreshCw,
 } from "lucide-react";
 import {
   apiCreditRiskPresets,
@@ -62,33 +62,6 @@ const fmt = (n: number) =>
 
 const fmtPct = (n: number) => `${(n * 100).toFixed(4)}%`;
 
-const FALLBACK_SOURCES = [
-  {
-    title: "Qiskit Finance — Credit Risk Analysis Tutorial",
-    url: "https://qiskit-community.github.io/qiskit-finance/tutorials/09_credit_risk_analysis.html",
-    description: "GCI model, WeightedAdder, LinearAmplitudeFunction, IQAE for portfolio loss distribution",
-  },
-  {
-    title: "S&P Global — 2025 Annual Global Corporate Default and Rating Transition Study",
-    url: "https://www.spglobal.com/ratings/en/research/articles/250328-2025-annual-global-corporate-default-and-rating-transition-study-13473585",
-    description: "Source for 1-year default rates: A+ ≈ 0.03%, BB+ ≈ 0.50%",
-  },
-  {
-    title: "Basel II IRB Approach — BIS Working Paper",
-    url: "https://www.bis.org/publ/work116.pdf",
-    description: "Asset correlation formula ρ(PD): systemic factor model, basis for ρ = 0.28",
-  },
-  {
-    title: "Woerner & Egger (2019) — Quantum Risk Analysis, npj Quantum Information",
-    url: "https://www.nature.com/articles/s41534-019-0130-6",
-    description: "Quantum amplitude estimation for financial risk; foundational paper for QAE-based VaR/CVaR",
-  },
-  {
-    title: "Egger et al. (2020) — Credit Risk Analysis Using Quantum Computers, IEEE Transactions on Computers",
-    url: "https://ieeexplore.ieee.org/document/9259208",
-    description: "Direct application of GCI model + IQAE to credit portfolios; basis for the circuit design",
-  },
-];
 
 export const CreditRiskDashboard = () => {
   const [obligors, setObligors] = useState<CreditRiskObligorInput[]>([]);
@@ -141,8 +114,6 @@ export const CreditRiskDashboard = () => {
       setLoading(false);
     }
   };
-
-  const sources = result?.sources?.length ? result.sources : FALLBACK_SOURCES;
 
   return (
     <div className="space-y-6">
@@ -553,40 +524,6 @@ export const CreditRiskDashboard = () => {
             </>
           )}
 
-          {/* Sources section — always visible */}
-          <Card className="border-accent/20">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <ExternalLink className="w-4 h-4 text-primary" />
-                Sources &amp; Methodology
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-3">
-                {sources.map((src, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <span className="text-primary font-mono text-xs mt-0.5 shrink-0">[{i + 1}]</span>
-                    <div>
-                      <a
-                        href={src.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs font-medium text-primary hover:underline flex items-center gap-1"
-                      >
-                        {src.title}
-                        <ExternalLink className="w-2.5 h-2.5 opacity-60" />
-                      </a>
-                      <p className="text-xs text-muted-foreground mt-0.5">{src.description}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              <p className="text-xs text-muted-foreground/60 mt-4 pt-3 border-t border-border/40">
-                Default probabilities from S&amp;P 2025 Annual Default Study. Correlations from Basel II IRB formula.
-                Quantum path uses Qiskit Aer statevector simulator with GCI model circuits.
-              </p>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>
