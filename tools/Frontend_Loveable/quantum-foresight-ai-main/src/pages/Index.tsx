@@ -80,11 +80,11 @@ const ENTERPRISE_TABS = new Set(["quantum-hardware"]);
 const CLASSICAL_TABS = [
   { value: "assistant",        label: "Lachesis AI",         icon: Sparkles },
   { value: "finance",          label: "Financial Analytics", icon: TrendingUp },
-  { value: "insider",          label: "Insider Trading",     icon: Briefcase },
-  { value: "sentiment",        label: "Sentiment Analysis",  icon: Newspaper },
   { value: "budgeting",        label: "Budgeting",           icon: Wallet },
   { value: "retirement",       label: "Retirement",          icon: PiggyBank },
   { value: "classical-credit", label: "Credit Risk",         icon: ShieldCheck },
+  { value: "insider",          label: "Insider Trading",     icon: Briefcase },
+  { value: "sentiment",        label: "Sentiment Analysis",  icon: Newspaper },
 ] as const;
 
 function LanguageSelector() {
