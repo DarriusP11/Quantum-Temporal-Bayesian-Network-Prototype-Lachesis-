@@ -39,8 +39,9 @@ const OWNER_EMAIL = "darriusperson@gmail.com";
 export const LachesisAssistant = () => {
   const { user } = useAuth();
   const isOwner = user?.email?.toLowerCase() === OWNER_EMAIL;
-  const { state: appState, setCreditRiskSnapshot } = useAppContext();
+  const { state: appState, setCreditRiskSnapshot, setClassicalCreditRiskSnapshot } = useAppContext();
   const creditRiskSnapshot = appState.creditRiskSnapshot;
+  const classicalCreditRiskSnapshot = appState.classicalCreditRiskSnapshot;
   const language = appState.language ?? "English";
   const { isListening, micSupported, startListening, stopListening } = useVoice(language);
   const [messages, setMessages] = useState<Message[]>([
@@ -993,9 +994,55 @@ Use these settings as context when answering questions about the user's portfoli
             </div>
           )}
 
+          {/* Classical Credit Risk interpretation card */}
+          {classicalCreditRiskSnapshot && (
+            <div className="border border-emerald-500/30 rounded-lg overflow-hidden bg-emerald-500/5">
+              <div className="flex items-center gap-3 px-4 py-3">
+                <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-emerald-400">Classical Credit Risk Profile Ready</p>
+                  <p className="text-xs text-muted-foreground">
+                    FICO {classicalCreditRiskSnapshot.fico} ({classicalCreditRiskSnapshot.fico_tier}) ·{" "}
+                    <span className={
+                      classicalCreditRiskSnapshot.risk_level === "Low" ? "text-emerald-400" :
+                      classicalCreditRiskSnapshot.risk_level === "Medium" ? "text-amber-400" : "text-red-400"
+                    }>{classicalCreditRiskSnapshot.risk_level} Risk</span>{" "}
+                    · Total DTI {classicalCreditRiskSnapshot.total_dti_pct}%
+                  </p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                    disabled={isLoading}
+                    onClick={() => {
+                      const s = classicalCreditRiskSnapshot;
+                      const fmt$ = (v: number) => `$${v.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+                      const tipLines = s.tips.map(t => `  • ${t}`).join("\n");
+                      const prompt = `Please interpret my Classical Credit Risk profile and give me plain-English guidance:\n\n**Credit Profile:**\n  • FICO Score: ${s.fico} (${s.fico_tier})\n  • Employment: ${s.employment}\n  • Monthly Income: ${fmt$(s.monthly_income)}\n  • Existing Monthly Debt: ${fmt$(s.monthly_debt)} (DTI: ${s.dti_pct}%)\n  • Loan Requested: ${fmt$(s.loan_amount)} over ${s.loan_term_months} months\n  • Estimated Monthly Payment: ${fmt$(s.estimated_monthly_payment)}\n  • Total DTI with new loan: ${s.total_dti_pct}%\n\n**Risk Assessment:** ${s.risk_level} Risk\n${s.risk_summary}\n\n**Flagged Tips:**\n${tipLines}\n\nPlease give me: (1) what this profile means in plain English, (2) whether I should apply for this loan now or wait, (3) the top 2-3 specific actions I can take in the next 90 days to improve my profile.`;
+                      pendingPromptRef.current = prompt;
+                      handleSendMessage();
+                    }}
+                  >
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    Interpret Now
+                  </Button>
+                  <Button
+                    size="sm" variant="ghost"
+                    className="h-8 w-8 p-0 text-muted-foreground"
+                    onClick={() => setClassicalCreditRiskSnapshot(null)}
+                    title="Dismiss"
+                  >
+                    ×
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Messages */}
-          <ScrollArea 
-            className="h-96 w-full rounded-lg border border-accent/20 bg-muted/20 p-4" 
+          <ScrollArea
+            className="h-96 w-full rounded-lg border border-accent/20 bg-muted/20 p-4"
             ref={scrollAreaRef}
           >
             <div className="space-y-4">

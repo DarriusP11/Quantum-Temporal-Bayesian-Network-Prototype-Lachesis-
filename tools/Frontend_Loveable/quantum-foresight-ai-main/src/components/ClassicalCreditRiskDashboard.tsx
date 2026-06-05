@@ -4,8 +4,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ShieldCheck, ShieldAlert, Shield, TrendingUp, AlertTriangle, CheckCircle2, Info } from "lucide-react";
+import { ShieldCheck, ShieldAlert, Shield, TrendingUp, AlertTriangle, CheckCircle2, Info, Sparkles } from "lucide-react";
+import { useAppContext } from "@/contexts/AppContext";
 
 type RiskLevel = "Low" | "Medium" | "High";
 
@@ -99,6 +101,9 @@ export function ClassicalCreditRiskDashboard() {
   const [loanAmount, setLoanAmount]       = useState(10000);
   const [loanTerm, setLoanTerm]           = useState(36);
   const [employment, setEmployment]       = useState("full_time");
+  const [exported, setExported]           = useState(false);
+
+  const { setClassicalCreditRiskSnapshot } = useAppContext();
 
   const dti = monthlyIncome > 0 ? monthlyDebt / monthlyIncome : 0;
   const newPayment = loanTerm > 0 ? loanAmount / loanTerm : 0;
@@ -116,6 +121,32 @@ export function ClassicalCreditRiskDashboard() {
   );
 
   const RiskIcon = result.icon;
+
+  const EMPLOYMENT_LABELS: Record<string, string> = {
+    full_time: "Full-Time Employed", part_time: "Part-Time / Gig Work",
+    self_employed: "Self-Employed", student: "Student (with income)", unemployed: "Unemployed",
+  };
+
+  const handleExport = () => {
+    setClassicalCreditRiskSnapshot({
+      timestamp: new Date().toISOString(),
+      fico,
+      fico_tier: ficoTier.label,
+      employment: EMPLOYMENT_LABELS[employment] ?? employment,
+      monthly_income: monthlyIncome,
+      monthly_debt: monthlyDebt,
+      loan_amount: loanAmount,
+      loan_term_months: loanTerm,
+      dti_pct: parseFloat((dti * 100).toFixed(1)),
+      total_dti_pct: parseFloat((totalDti * 100).toFixed(1)),
+      estimated_monthly_payment: parseFloat(newPayment.toFixed(2)),
+      risk_level: result.level,
+      risk_summary: result.summary,
+      tips: result.tips,
+    });
+    setExported(true);
+    setTimeout(() => setExported(false), 3000);
+  };
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -248,6 +279,20 @@ export function ClassicalCreditRiskDashboard() {
                 <p className={`text-3xl font-bold ${result.color}`}>{result.level} Risk</p>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">{result.summary}</p>
+              {exported ? (
+                <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 text-xs gap-1">
+                  <CheckCircle2 className="w-3 h-3" />Saved — switch to Lachesis AI to interpret
+                </Badge>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 text-xs border-primary/40 text-primary hover:bg-primary/10"
+                  onClick={handleExport}
+                >
+                  <Sparkles className="w-3 h-3" />Send to Lachesis AI
+                </Button>
+              )}
             </CardContent>
           </Card>
 

@@ -106,6 +106,24 @@ export interface FinanceConfig {
   show_position: boolean;
 }
 
+// ── Classical credit risk snapshot (shared between Classical Credit Risk tab and Lachesis AI) ───
+export interface ClassicalCreditRiskSnapshot {
+  timestamp: string;
+  fico: number;
+  fico_tier: string;
+  employment: string;
+  monthly_income: number;
+  monthly_debt: number;
+  loan_amount: number;
+  loan_term_months: number;
+  dti_pct: number;
+  total_dti_pct: number;
+  estimated_monthly_payment: number;
+  risk_level: 'Low' | 'Medium' | 'High';
+  risk_summary: string;
+  tips: string[];
+}
+
 // ── Credit risk snapshot (shared between Credit Risk tab and Lachesis AI) ─────
 export interface CreditRiskSnapshot {
   timestamp: string;
@@ -135,6 +153,8 @@ export interface AppState {
   language: string;
   // Shared credit risk snapshot for Lachesis AI interpretation
   creditRiskSnapshot: CreditRiskSnapshot | null;
+  // Shared classical credit risk snapshot for Lachesis AI interpretation
+  classicalCreditRiskSnapshot: ClassicalCreditRiskSnapshot | null;
 }
 
 const DEFAULT_STATE: AppState = {
@@ -166,6 +186,7 @@ const DEFAULT_STATE: AppState = {
     show_position: false,
   },
   creditRiskSnapshot: null,
+  classicalCreditRiskSnapshot: null,
 };
 
 // ── Context type ───────────────────────────────────────────────────────────────
@@ -181,6 +202,7 @@ interface AppContextValue {
   setLanguage: (lang: string) => void;
   resetToDefaults: () => void;
   setCreditRiskSnapshot: (s: CreditRiskSnapshot | null) => void;
+  setClassicalCreditRiskSnapshot: (s: ClassicalCreditRiskSnapshot | null) => void;
   /** Build the API request body from current state (for /api/quantum/simulate) */
   buildQuantumRequest: () => object;
   /** Active app section — 'quantum' or 'classical' */
@@ -216,6 +238,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState(s => ({ ...s, language: lang })), []);
   const setCreditRiskSnapshot = useCallback((s: CreditRiskSnapshot | null) =>
     setState(prev => ({ ...prev, creditRiskSnapshot: s })), []);
+  const setClassicalCreditRiskSnapshot = useCallback((s: ClassicalCreditRiskSnapshot | null) =>
+    setState(prev => ({ ...prev, classicalCreditRiskSnapshot: s })), []);
   const resetToDefaults = useCallback(() => setState(DEFAULT_STATE), []);
 
   const buildQuantumRequest = useCallback(() => {
@@ -242,7 +266,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     <AppContext.Provider value={{
       state, setNumQubits, setShots, setUseSeed, setSeedVal,
       setStep, setNoise, setFinance, setLanguage, resetToDefaults, buildQuantumRequest,
-      setCreditRiskSnapshot, activeSection, setActiveSection,
+      setCreditRiskSnapshot, setClassicalCreditRiskSnapshot, activeSection, setActiveSection,
     }}>
       {children}
     </AppContext.Provider>
