@@ -106,6 +106,18 @@ export interface FinanceConfig {
   show_position: boolean;
 }
 
+// ── Credit risk snapshot (shared between Credit Risk tab and Lachesis AI) ─────
+export interface CreditRiskSnapshot {
+  timestamp: string;
+  total_exposure_usd: number;
+  confidence: number;
+  horizon_years: number;
+  obligors: { name: string; ticker: string; sp_rating: string; pd_adj_pct: number; lgd_pct: number; el_own_usd: number }[];
+  mc: { expected_loss_usd: number; var_usd: number; cvar_usd: number; paths: number };
+  quantum: { used: boolean; el_usd: number | null; cvar_usd: number | null; error: string | null };
+  multi_default_prob: number | null;
+}
+
 // ── Full app state ─────────────────────────────────────────────────────────────
 export interface AppState {
   // Quantum
@@ -121,6 +133,8 @@ export interface AppState {
   finance: FinanceConfig;
   // Global LLM language
   language: string;
+  // Shared credit risk snapshot for Lachesis AI interpretation
+  creditRiskSnapshot: CreditRiskSnapshot | null;
 }
 
 const DEFAULT_STATE: AppState = {
@@ -151,6 +165,7 @@ const DEFAULT_STATE: AppState = {
     per_share: false,
     show_position: false,
   },
+  creditRiskSnapshot: null,
 };
 
 // ── Context type ───────────────────────────────────────────────────────────────
@@ -165,6 +180,7 @@ interface AppContextValue {
   setFinance: (f: FinanceConfig) => void;
   setLanguage: (lang: string) => void;
   resetToDefaults: () => void;
+  setCreditRiskSnapshot: (s: CreditRiskSnapshot | null) => void;
   /** Build the API request body from current state (for /api/quantum/simulate) */
   buildQuantumRequest: () => object;
 }
@@ -194,6 +210,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState(s => ({ ...s, finance: f })), []);
   const setLanguage = useCallback((lang: string) =>
     setState(s => ({ ...s, language: lang })), []);
+  const setCreditRiskSnapshot = useCallback((s: CreditRiskSnapshot | null) =>
+    setState(prev => ({ ...prev, creditRiskSnapshot: s })), []);
   const resetToDefaults = useCallback(() => setState(DEFAULT_STATE), []);
 
   const buildQuantumRequest = useCallback(() => {
@@ -220,6 +238,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     <AppContext.Provider value={{
       state, setNumQubits, setShots, setUseSeed, setSeedVal,
       setStep, setNoise, setFinance, setLanguage, resetToDefaults, buildQuantumRequest,
+      setCreditRiskSnapshot,
     }}>
       {children}
     </AppContext.Provider>

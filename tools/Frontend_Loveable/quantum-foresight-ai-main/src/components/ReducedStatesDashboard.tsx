@@ -3,7 +3,7 @@
  * Each qubit gets its own independent Plotly 3D scene so that aspectmode:"cube"
  * always renders a true sphere regardless of qubit count.
  */
-import { useState, lazy, Suspense } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,9 +11,11 @@ import { Progress } from "@/components/ui/progress";
 import { AlertCircle, RefreshCw, Layers } from "lucide-react";
 import { useAppContext } from "@/contexts/AppContext";
 import { post } from "@/lib/api";
-
-// Lazy-load Plotly to keep initial bundle small
-const Plot = lazy(() => import("react-plotly.js"));
+import Plotly from "plotly.js-dist-min";
+import _factory from "react-plotly.js/factory";
+// CJS module exports as exports.default; unwrap for Vite ESM interop
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Plot = ((_factory as any).default ?? _factory)(Plotly as object) as React.ComponentType<any>;
 
 interface ReducedState {
   qubit: number;
@@ -223,21 +225,13 @@ export const ReducedStatesDashboard = () => {
                   const color = COLORS[qi % COLORS.length];
                   const fig = buildSingleBlochFigure(rs, qi, color);
                   return (
-                    <Suspense
+                    <Plot
                       key={qi}
-                      fallback={
-                        <div className="h-[340px] flex items-center justify-center text-muted-foreground text-sm">
-                          Loading 3D renderer...
-                        </div>
-                      }
-                    >
-                      <Plot
-                        data={fig.traces as Plotly.Data[]}
-                        layout={fig.layout}
-                        config={{ responsive: true, displayModeBar: true, displaylogo: false }}
-                        style={{ width: "100%", height: "340px" }}
-                      />
-                    </Suspense>
+                      data={fig.traces as Plotly.Data[]}
+                      layout={fig.layout}
+                      config={{ responsive: true, displayModeBar: true, displaylogo: false }}
+                      style={{ width: "100%", height: "340px" }}
+                    />
                   );
                 })}
               </div>

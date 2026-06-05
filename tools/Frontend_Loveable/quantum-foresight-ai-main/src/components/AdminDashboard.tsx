@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Activity, AlertCircle, CheckCircle, Eye, EyeOff, KeyRound, Trash2 } from "lucide-react";
+import { Activity, AlertCircle, CheckCircle, Eye, EyeOff, KeyRound, Power, PowerOff, Trash2 } from "lucide-react";
 import { post, get } from "@/lib/api";
 
 interface KeySpec {
@@ -50,6 +50,60 @@ export const AdminDashboard = () => {
   const [show, setShow]     = useState<Record<string, boolean>>({});
   const [status, setStatus] = useState<Record<string, KeyStatus>>({});
   const [validating, setValidating] = useState<string | null>(null);
+
+  // ── Global key activation ───────────────────────────────────────────────────
+  const [globalActive, setGlobalActive]       = useState<boolean | null>(null);
+  const [globalActivatedAt, setGlobalActivatedAt] = useState<string | null>(null);
+  const [globalLoading, setGlobalLoading]     = useState(false);
+  const [globalError, setGlobalError]         = useState<string | null>(null);
+
+  const fetchGlobalStatus = async () => {
+    try {
+      const data = await get<{ active: boolean; activated_at: string | null }>("/api/global-keys/status");
+      setGlobalActive(data.active);
+      setGlobalActivatedAt(data.activated_at);
+    } catch {
+      setGlobalActive(false);
+    }
+  };
+
+  const activateGlobal = async () => {
+    const openaiKey     = keys["openai"]           ?? "";
+    const elevenlabsKey = keys["voice_elevenlabs"] ?? "";
+    if (!openaiKey.trim() && !elevenlabsKey.trim()) {
+      setGlobalError("Enter and validate at least the OpenAI or ElevenLabs key above first.");
+      return;
+    }
+    setGlobalLoading(true);
+    setGlobalError(null);
+    try {
+      const res = await post<{ success: boolean; activated_at: string }>("/api/global-keys/activate", {
+        openai: openaiKey,
+        elevenlabs: elevenlabsKey,
+      });
+      if (res.success) { setGlobalActive(true); setGlobalActivatedAt(res.activated_at); }
+    } catch (e: unknown) {
+      setGlobalError(e instanceof Error ? e.message : "Activation failed");
+    } finally {
+      setGlobalLoading(false);
+    }
+  };
+
+  const deactivateGlobal = async () => {
+    setGlobalLoading(true);
+    setGlobalError(null);
+    try {
+      await post("/api/global-keys/deactivate", {});
+      setGlobalActive(false);
+      setGlobalActivatedAt(null);
+    } catch (e: unknown) {
+      setGlobalError(e instanceof Error ? e.message : "Deactivation failed");
+    } finally {
+      setGlobalLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchGlobalStatus(); }, []);
 
   // ── Billing health ──────────────────────────────────────────────────────────
   const [health, setHealth]             = useState<BillingHealth | null>(null);
@@ -120,6 +174,62 @@ export const AdminDashboard = () => {
           <Button variant="outline" size="sm" onClick={clearAll} className="border-red-500/30 text-red-400 hover:bg-red-500/10">
             <Trash2 className="w-3 h-3 mr-1" />Clear all session keys
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* ── Global API Access ──────────────────────────────────────────────── */}
+      <Card className={`border-2 ${globalActive ? "border-green-500/40 bg-green-950/10" : "border-accent/20"}`}>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-sm">
+            {globalActive
+              ? <Power className="w-4 h-4 text-green-400" />
+              : <PowerOff className="w-4 h-4 text-muted-foreground" />}
+            Global API Access
+            <Badge className={`ml-auto text-xs ${globalActive ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-muted/30 text-muted-foreground border-accent/20"}`}>
+              {globalActive === null ? "Checking…" : globalActive ? "ACTIVE — all users" : "INACTIVE"}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            When <strong>active</strong>, all logged-in users can use Lachesis AI and voice features using the keys stored server-side. Deactivating removes access immediately.
+          </p>
+          {globalActivatedAt && (
+            <p className="text-xs text-green-400/70">Activated: {new Date(globalActivatedAt).toLocaleString()}</p>
+          )}
+          {globalError && (
+            <div className="flex items-center gap-1 text-xs text-red-400">
+              <AlertCircle className="w-3 h-3 shrink-0" />{globalError}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Button
+              size="sm" variant="outline"
+              className="h-8 text-xs border-green-500/30 text-green-400 hover:bg-green-500/10"
+              onClick={activateGlobal}
+              disabled={globalLoading || globalActive === true}
+            >
+              <Power className="w-3 h-3 mr-1" />
+              {globalLoading && !globalActive ? "Activating…" : "Activate for all users"}
+            </Button>
+            <Button
+              size="sm" variant="outline"
+              className="h-8 text-xs border-red-500/30 text-red-400 hover:bg-red-500/10"
+              onClick={deactivateGlobal}
+              disabled={globalLoading || globalActive === false}
+            >
+              <PowerOff className="w-3 h-3 mr-1" />
+              {globalLoading && globalActive ? "Deactivating…" : "Deactivate"}
+            </Button>
+            <Button
+              size="sm" variant="ghost"
+              className="h-8 text-xs ml-auto"
+              onClick={fetchGlobalStatus}
+              disabled={globalLoading}
+            >
+              Refresh
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

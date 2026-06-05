@@ -13,7 +13,7 @@ import {
 } from "recharts";
 import {
   TrendingDown, DollarSign, AlertCircle, CheckCircle,
-  Activity, Atom, RefreshCw,
+  Activity, Atom, RefreshCw, Sparkles,
 } from "lucide-react";
 import {
   apiCreditRiskPresets,
@@ -21,6 +21,7 @@ import {
   CreditRiskObligorInput,
   CreditRiskResponse,
 } from "@/lib/api";
+import { useAppContext } from "@/contexts/AppContext";
 
 const SP_RATINGS = ["AAA", "AA+", "AA", "AA-", "A+", "A", "A-", "BBB+", "BBB", "BBB-",
   "BB+", "BB", "BB-", "B+", "B", "B-", "CCC+", "CCC", "CCC-", "CC", "C", "D"];
@@ -64,6 +65,7 @@ const fmtPct = (n: number) => `${(n * 100).toFixed(4)}%`;
 
 
 export const CreditRiskDashboard = () => {
+  const { setCreditRiskSnapshot } = useAppContext();
   const [obligors, setObligors] = useState<CreditRiskObligorInput[]>([]);
   const [confidence, setConfidence] = useState(0.95);
   const [horizonYears, setHorizonYears] = useState("1.0");
@@ -108,6 +110,19 @@ export const CreditRiskDashboard = () => {
         use_quantum: useQuantum,
       });
       setResult(res);
+      setCreditRiskSnapshot({
+        timestamp: new Date().toISOString(),
+        total_exposure_usd: res.total_exposure_usd,
+        confidence: res.confidence,
+        horizon_years: res.horizon_years,
+        obligors: res.obligors.map(o => ({
+          name: o.name, ticker: o.ticker, sp_rating: o.sp_rating,
+          pd_adj_pct: o.pd_adj_pct, lgd_pct: o.lgd_pct, el_own_usd: o.el_own_usd,
+        })),
+        mc: { expected_loss_usd: res.mc.expected_loss_usd, var_usd: res.mc.var_usd, cvar_usd: res.mc.cvar_usd, paths: res.mc.paths },
+        quantum: { used: res.quantum.used, el_usd: res.quantum.el_usd ?? null, cvar_usd: res.quantum.cvar_usd ?? null, error: res.quantum.error ?? null },
+        multi_default_prob: res.multi_default_prob ?? null,
+      });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Analysis failed");
     } finally {
@@ -521,6 +536,17 @@ export const CreditRiskDashboard = () => {
                   Stress: {result.stress_multiplier.toFixed(1)}× · Horizon: {result.horizon_years}y · Conf: {(result.confidence * 100).toFixed(0)}%
                 </div>
               </div>
+
+              {/* Lachesis AI bridge */}
+              <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-accent/5">
+                <CardContent className="pt-4 pb-3 flex items-center gap-4">
+                  <Sparkles className="w-5 h-5 text-primary shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold">Results saved to Lachesis AI</p>
+                    <p className="text-xs text-muted-foreground">Switch to the Lachesis AI tab and click "Interpret Credit Risk Results" to get a plain-English breakdown.</p>
+                  </div>
+                </CardContent>
+              </Card>
             </>
           )}
 

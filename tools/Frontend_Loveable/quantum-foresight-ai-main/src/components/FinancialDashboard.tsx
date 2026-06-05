@@ -37,9 +37,12 @@ interface PersonaViewProps {
   confidence: number;
   lookbackDays: number;
   simulations: number;
+  perShare: boolean;
+  showPosition: boolean;
 }
 
-function PersonaView({ persona, data, portfolioValue, confidence, lookbackDays, simulations }: PersonaViewProps) {
+function PersonaView({ persona, data, portfolioValue, confidence, lookbackDays, simulations, perShare, showPosition }: PersonaViewProps) {
+  const valueLabel = perShare ? "per share" : showPosition ? "position value" : "portfolio value";
   const dollarVar  = data.var_mc  * portfolioValue;
   const dollarCVaR = data.cvar_mc * portfolioValue;
   const stressFactor = data.sentiment_multiplier ?? null;
@@ -125,7 +128,7 @@ function PersonaView({ persona, data, portfolioValue, confidence, lookbackDays, 
       <p className="font-semibold text-primary text-base">Client-Friendly Summary</p>
       <ul className="space-y-1.5 list-disc list-inside text-muted-foreground leading-relaxed">
         <li>Market looks <span className="font-medium text-foreground">{data.regime}</span> — {regimeSentence}</li>
-        <li>Portfolio size: <span className="font-semibold text-foreground">{fmt$(portfolioValue)}</span></li>
+        <li>{valueLabel.charAt(0).toUpperCase() + valueLabel.slice(1)}: <span className="font-semibold text-foreground">{fmt$(portfolioValue)}</span></li>
         <li>Typical "bad case" short-horizon loss estimate: <span className="font-semibold text-red-400">{fmt$(dollarVar)}</span></li>
         <li>"Very bad tail" average loss estimate: <span className="font-semibold text-red-500">{fmt$(dollarCVaR)}</span></li>
         {stressedDollarVar != null && stressedDollarCVaR != null ? (
@@ -224,13 +227,31 @@ function CorrelationMatrix({ returns, tickers }: { returns: Record<string, numbe
 export const FinancialDashboard = () => {
   const { state } = useAppContext();
   const { subscription } = useSubscription();
-  const portfolioValue = state.finance.portfolio_value;
 
+  const [portfolioValue, setPortfolioValue] = useState(state.finance.portfolio_value);
   const [tickers, setTickers] = useState("SPY,QQQ,AAPL");
   const [lookbackDays, setLookbackDays] = useState(365);
   const [confidence, setConfidence] = useState(0.95);
   const [simulations, setSimulations] = useState(50000);
   const [demoMode, setDemoMode] = useState(false);
+  const [perShare, setPerShare] = useState(state.finance.per_share);
+  const [showPosition, setShowPosition] = useState(state.finance.show_position);
+
+  const handlePerShareChange = (checked: boolean) => {
+    setPerShare(checked);
+    if (checked) setShowPosition(false);
+  };
+  const handleShowPositionChange = (checked: boolean) => {
+    setShowPosition(checked);
+    if (checked) setPerShare(false);
+  };
+
+  const portfolioValueLabel = perShare
+    ? "Value Per Share ($)"
+    : showPosition
+    ? "Position Value — shares × price ($)"
+    : "Portfolio Value ($)";
+
   const [useQAE, setUseQAE] = useState(false);
   const [sentimentMult, setSentimentMult] = useState("");
   const [applyMacroStress, setApplyMacroStress] = useState(false);
@@ -425,6 +446,20 @@ export const FinancialDashboard = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
+              <Label htmlFor="portfolio-value">{portfolioValueLabel}</Label>
+              <Input
+                id="portfolio-value"
+                type="number"
+                step={perShare ? 1 : 10000}
+                value={portfolioValue}
+                onChange={(e) => setPortfolioValue(parseFloat(e.target.value) || 0)}
+                min="0"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
               <Label>Confidence Level: {(confidence * 100).toFixed(0)}%</Label>
               <Slider
                 value={[confidence]}
@@ -454,6 +489,22 @@ export const FinancialDashboard = () => {
                   onCheckedChange={(checked) => setDemoMode(!!checked)}
                 />
                 <Label htmlFor="demo">Demo Mode (Synthetic Data) — uncheck for live yfinance</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="per-share"
+                  checked={perShare}
+                  onCheckedChange={(checked) => handlePerShareChange(!!checked)}
+                />
+                <Label htmlFor="per-share">Per share</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="show-position"
+                  checked={showPosition}
+                  onCheckedChange={(checked) => handleShowPositionChange(!!checked)}
+                />
+                <Label htmlFor="show-position">Position ($ = shares × price)</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -924,6 +975,8 @@ export const FinancialDashboard = () => {
                 confidence={confidence}
                 lookbackDays={lookbackDays}
                 simulations={simulations}
+                perShare={perShare}
+                showPosition={showPosition}
               />
             </div>
           </CardContent>

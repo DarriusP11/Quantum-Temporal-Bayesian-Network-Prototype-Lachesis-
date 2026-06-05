@@ -13,8 +13,9 @@ import lachesisAvatar from "@/assets/lachesis-avatar-v2.jpg";
 import { QuantumTemporalBayesianNetwork } from "@/lib/qtbn-engine";
 import { FinancialData } from "@/types/quantum";
 import { useAppContext } from "@/contexts/AppContext";
+import { useAuth } from "@/hooks/useAuth";
 import { useVoice } from "@/hooks/useVoice";
-import { apiWebSearch, post } from "@/lib/api";
+import { apiWebSearch, post, get } from "@/lib/api";
 
 interface Message {
   id: string;
@@ -33,8 +34,13 @@ interface Attachment {
   isImage: boolean;
 }
 
+const OWNER_EMAIL = "darriusperson@gmail.com";
+
 export const LachesisAssistant = () => {
-  const { state: appState } = useAppContext();
+  const { user } = useAuth();
+  const isOwner = user?.email?.toLowerCase() === OWNER_EMAIL;
+  const { state: appState, setCreditRiskSnapshot } = useAppContext();
+  const creditRiskSnapshot = appState.creditRiskSnapshot;
   const language = appState.language ?? "English";
   const { isListening, micSupported, startListening, stopListening } = useVoice(language);
   const [messages, setMessages] = useState<Message[]>([
@@ -68,6 +74,7 @@ export const LachesisAssistant = () => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const ssInputRef = useRef<HTMLInputElement>(null);
+  const pendingPromptRef = useRef<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -75,6 +82,29 @@ export const LachesisAssistant = () => {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Auto-load owner API keys from env vars — runs once after login
+  useEffect(() => {
+    if (!isOwner) return;
+    const ownerOpenAI     = import.meta.env.VITE_OWNER_OPENAI_KEY as string | undefined;
+    const ownerElevenLabs = import.meta.env.VITE_OWNER_ELEVENLABS_KEY as string | undefined;
+    if (ownerOpenAI)     setApiKey(ownerOpenAI);
+    if (ownerElevenLabs) setElevenLabsApiKey(ownerElevenLabs);
+  }, [isOwner]);
+
+  // For non-owners: check if global keys are active and load them
+  useEffect(() => {
+    if (isOwner) return;
+    (async () => {
+      try {
+        const status = await get<{ active: boolean }>("/api/global-keys/status");
+        if (!status.active) return;
+        const keys = await get<{ openai: string; elevenlabs: string }>("/api/global-keys/fetch");
+        if (keys.openai)     setApiKey(keys.openai);
+        if (keys.elevenlabs) setElevenLabsApiKey(keys.elevenlabs);
+      } catch { /* silently skip if backend unreachable */ }
+    })();
+  }, [isOwner]);
 
   const handleSsFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
@@ -131,10 +161,12 @@ export const LachesisAssistant = () => {
 
   const speakText = async (text: string) => {
     if (!voiceEnabled || !elevenLabsApiKey.trim()) return;
+    // La (ladder) + cheh (leche) + sis (sister)
+    text = text.replace(/Lachesis/gi, "LAchehsis");
 
     try {
       setIsSpeaking(true);
-      const voiceId = 'VM4OoNVLkEAbLiaL7S14';
+      const voiceId = '7Xel906DyA79iUzguAaO';
       const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
         method: 'POST',
         headers: {
@@ -378,14 +410,16 @@ export const LachesisAssistant = () => {
   };
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() && attachments.length === 0) return;
+    const effectiveInput = pendingPromptRef.current ?? inputMessage;
+    pendingPromptRef.current = null;
+    if (!effectiveInput.trim() && attachments.length === 0) return;
     
     if (!apiKey.trim()) {
       // Rule-based fallback via backend (no OpenAI key needed)
       const userMessage: Message = {
         id: Date.now().toString(),
         role: 'user',
-        content: inputMessage,
+        content: effectiveInput,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, userMessage]);
@@ -393,7 +427,7 @@ export const LachesisAssistant = () => {
       setIsLoading(true);
       try {
         const res = await post<{ narrative: string }>("/api/financial/lachesis-guide", {
-          question: inputMessage,
+          question: effectiveInput,
           tickers: appState.finance.tickers.split(",").map((t: string) => t.trim()),
           regime,
           var_usd: varUsd ? parseFloat(varUsd) : null,
@@ -433,7 +467,7 @@ export const LachesisAssistant = () => {
       !inputMessage.trim() // No message means "analyze this"
     );
 
-    let messageContent = inputMessage;
+    let messageContent = effectiveInput;
     if (isLikelyPortfolio && hasImageAttachment) {
       messageContent = inputMessage || "Please analyze my portfolio screenshot, extract all stock positions with their values and allocation percentages. After extracting the data, run a quantum temporal analysis to predict future performance and explain the results in simple terms.";
     } else if (!inputMessage.trim() && attachments.length > 0) {
@@ -710,8 +744,8 @@ Use these settings as context when answering questions about the user's portfoli
 
   return (
     <div className="space-y-6">
-      {/* API Key Configuration */}
-      <Alert className="border-amber-500/20 bg-amber-500/10">
+      {/* API Key Configuration — owner only */}
+      {isOwner && <Alert className="border-amber-500/20 bg-amber-500/10">
         <Key className="h-4 w-4" />
         <AlertDescription className="space-y-3">
           <div>
@@ -748,7 +782,7 @@ Use these settings as context when answering questions about the user's portfoli
             </div>
           </div>
         </AlertDescription>
-      </Alert>
+      </Alert>}
 
       {/* Chat Interface */}
       <Card className="border-accent/20 bg-gradient-to-br from-card to-primary/5">
@@ -894,6 +928,56 @@ Use these settings as context when answering questions about the user's portfoli
               </div>
             )}
           </div>
+
+          {/* Credit Risk interpretation card */}
+          {creditRiskSnapshot && (
+            <div className="border border-primary/30 rounded-lg overflow-hidden bg-primary/5">
+              <div className="flex items-center gap-3 px-4 py-3">
+                <Sparkles className="w-4 h-4 text-primary shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-primary">Credit Risk Results Ready</p>
+                  <p className="text-xs text-muted-foreground">
+                    {creditRiskSnapshot.obligors.map(o => o.ticker).join(", ")} ·{" "}
+                    {(creditRiskSnapshot.confidence * 100).toFixed(0)}% confidence ·{" "}
+                    {creditRiskSnapshot.horizon_years}y horizon
+                  </p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    className="h-8 text-xs"
+                    disabled={isLoading}
+                    onClick={() => {
+                      const s = creditRiskSnapshot;
+                      const fmt$ = (v: number) => `$${v.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+                      const obligorLines = s.obligors.map(o =>
+                        `  • ${o.name} (${o.ticker}, ${o.sp_rating}): Adjusted PD ${(o.pd_adj_pct * 100).toFixed(4)}%, LGD ${(o.lgd_pct * 100).toFixed(1)}%, Expected Loss ${fmt$(o.el_own_usd)}`
+                      ).join("\n");
+                      const quantumSection = s.quantum.used && s.quantum.el_usd != null
+                        ? `\n**Quantum IQAE Results:**\n  • Quantum EL: ${fmt$(s.quantum.el_usd)}\n  • Quantum CVaR: ${s.quantum.cvar_usd != null ? fmt$(s.quantum.cvar_usd) : "N/A"}\n  • Delta vs MC EL: ${s.mc.expected_loss_usd > 0 ? ((s.quantum.el_usd / s.mc.expected_loss_usd - 1) * 100).toFixed(1) + "%" : "N/A"}`
+                        : s.quantum.error
+                        ? `\n**Quantum:** Not available — ${s.quantum.error}`
+                        : "\n**Quantum:** Not run";
+                      const prompt = `Please interpret the following Credit Risk Analysis results from my Lachesis platform:\n\n**Portfolio Overview:**\n  • Total Exposure: ${fmt$(s.total_exposure_usd)}\n  • Confidence Level: ${(s.confidence * 100).toFixed(0)}%\n  • Time Horizon: ${s.horizon_years} year(s)\n  • Monte Carlo Paths: ${s.mc.paths.toLocaleString()}\n\n**Borrowers Analyzed:**\n${obligorLines}\n\n**Monte Carlo Risk Metrics:**\n  • Expected Loss (EL): ${fmt$(s.mc.expected_loss_usd)}\n  • Value at Risk (VaR @ ${(s.confidence * 100).toFixed(0)}%): ${fmt$(s.mc.var_usd)}\n  • CVaR / Expected Shortfall: ${fmt$(s.mc.cvar_usd)}${quantumSection}\n\n**Joint Default Probability:** ${s.multi_default_prob != null ? (s.multi_default_prob * 100).toFixed(4) + "%" : "N/A"}\n\nPlease provide: (1) A plain-English explanation of what these numbers mean for my portfolio, (2) What the comparison between quantum IQAE and classical Monte Carlo tells us, (3) The key risk concerns I should focus on, and (4) Any actionable insights or portfolio adjustments to consider.`;
+                      pendingPromptRef.current = prompt;
+                      handleSendMessage();
+                    }}
+                  >
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    Interpret Now
+                  </Button>
+                  <Button
+                    size="sm" variant="ghost"
+                    className="h-8 w-8 p-0 text-muted-foreground"
+                    onClick={() => setCreditRiskSnapshot(null)}
+                    title="Dismiss"
+                  >
+                    ×
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Messages */}
           <ScrollArea 

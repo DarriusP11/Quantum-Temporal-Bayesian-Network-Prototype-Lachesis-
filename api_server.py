@@ -2796,6 +2796,66 @@ def ibm_run_circuit(req: IBMRunCircuitRequest):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# GLOBAL API KEY CONFIG
+# ═══════════════════════════════════════════════════════════════════════════════
+
+import json as _json_mod
+import datetime as _dt_mod
+
+_GLOBAL_CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lachesis_global_config.json")
+
+def _load_global_config() -> dict:
+    try:
+        with open(_GLOBAL_CONFIG_PATH) as _f:
+            return _json_mod.load(_f)
+    except Exception:
+        return {"global_keys_active": False, "openai": "", "elevenlabs": "", "activated_at": None}
+
+def _save_global_config(cfg: dict) -> None:
+    with open(_GLOBAL_CONFIG_PATH, "w") as _f:
+        _json_mod.dump(cfg, _f, indent=2)
+
+
+class GlobalKeysActivateRequest(BaseModel):
+    openai: str = ""
+    elevenlabs: str = ""
+
+
+@app.get("/api/global-keys/status")
+def global_keys_status():
+    cfg = _load_global_config()
+    return {"active": cfg.get("global_keys_active", False), "activated_at": cfg.get("activated_at")}
+
+
+@app.post("/api/global-keys/activate")
+def global_keys_activate(req: GlobalKeysActivateRequest):
+    cfg = _load_global_config()
+    cfg["global_keys_active"] = True
+    cfg["openai"] = req.openai
+    cfg["elevenlabs"] = req.elevenlabs
+    cfg["activated_at"] = _dt_mod.datetime.utcnow().isoformat()
+    _save_global_config(cfg)
+    return {"success": True, "activated_at": cfg["activated_at"]}
+
+
+@app.post("/api/global-keys/deactivate")
+def global_keys_deactivate():
+    cfg = _load_global_config()
+    cfg["global_keys_active"] = False
+    cfg["activated_at"] = None
+    _save_global_config(cfg)
+    return {"success": True}
+
+
+@app.get("/api/global-keys/fetch")
+def global_keys_fetch():
+    cfg = _load_global_config()
+    if not cfg.get("global_keys_active"):
+        raise HTTPException(403, "Global keys not active")
+    return {"openai": cfg.get("openai", ""), "elevenlabs": cfg.get("elevenlabs", "")}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # ENTRY POINT
 # ═══════════════════════════════════════════════════════════════════════════════
 

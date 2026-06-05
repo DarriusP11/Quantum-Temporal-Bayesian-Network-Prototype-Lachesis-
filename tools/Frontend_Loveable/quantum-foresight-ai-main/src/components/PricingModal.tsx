@@ -24,7 +24,7 @@ const TIERS = [
     id:      "free",
     label:   "Free",
     icon:    Star,
-    price:   0,
+    price:   5,
     priceId: null as string | null,
     color:   "border-border",
     badge:   "",

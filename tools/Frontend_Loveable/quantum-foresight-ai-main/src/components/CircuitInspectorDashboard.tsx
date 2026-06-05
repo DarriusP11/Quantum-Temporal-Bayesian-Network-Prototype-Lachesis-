@@ -9,14 +9,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   Legend, ResponsiveContainer, Cell,
 } from "recharts";
 import {
-  AlertCircle, RefreshCw, Atom, Activity, Code2, Cpu, CheckCircle,
+  AlertCircle, RefreshCw, Atom, Activity, Code2, Cpu, CheckCircle, Settings,
 } from "lucide-react";
-import { useAppContext } from "@/contexts/AppContext";
+import { useAppContext, GateChoice, GateStepConfig } from "@/contexts/AppContext";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   apiQuantumSimulate, QuantumSimulateResponse, post,
   apiQASMValidate, QASMValidateResponse,
@@ -51,10 +56,84 @@ interface MeasurementResponse {
   num_qubits:    number;
 }
 
+// ── Quantum circuit helpers (shared by StatevectorPanel) ─────────────────────
+
+const GATES: GateChoice[] = ["None","H","X","Y","Z","RX","RY","RZ","S","T"];
+
+function buildAsciiCircuit(state: ReturnType<typeof useAppContext>["state"]): string {
+  const { num_qubits, step0, step1, step2 } = state;
+  const steps = [step0, step1, step2];
+  const qKeys = (["q0","q1","q2","q3"] as const).slice(0, num_qubits);
+  const angleKeys = (["q0_angle","q1_angle","q2_angle","q3_angle"] as const);
+  const rows: string[] = qKeys.map((_, qi) => `q${qi}: `);
+  steps.forEach((step) => {
+    qKeys.forEach((qk, qi) => {
+      const g = step[qk] as string;
+      const ang = step[angleKeys[qi]];
+      const label = g === "None" ? "─────" :
+                    ["RX","RY","RZ"].includes(g) ? `${g}(${ang.toFixed(2)})`.padEnd(8,"─") :
+                    `──${g}───`;
+      rows[qi] += `──[${label}]──`;
+    });
+  });
+  return rows.map(r => r + "─|").join("\n");
+}
+
+function StepRow({ stepIdx, nq, step, onChange }: {
+  stepIdx: number; nq: number; step: GateStepConfig;
+  onChange: (s: GateStepConfig) => void;
+}) {
+  const qKeys = (["q0","q1","q2","q3"] as const).slice(0, nq);
+  const angleKeys = (["q0_angle","q1_angle","q2_angle","q3_angle"] as const).slice(0, nq);
+  const cnotPairs: [keyof GateStepConfig, number, number][] = [
+    ["cnot_01",0,1], ["cnot_12",1,2], ["cnot_23",2,3]
+  ];
+  return (
+    <div className="space-y-2 pl-2 border-l border-accent/30">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">T{stepIdx}</p>
+      {qKeys.map((qk, qi) => (
+        <div key={qk} className="flex items-center gap-2">
+          <span className="text-xs w-5 text-muted-foreground">q{qi}</span>
+          <Select value={step[qk] as string}
+            onValueChange={v => onChange({ ...step, [qk]: v as GateChoice })}>
+            <SelectTrigger className="h-7 text-xs w-20"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {GATES.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {["RX","RY","RZ"].includes(step[qk] as string) && (
+            <div className="flex items-center gap-1 flex-1">
+              <span className="text-xs text-muted-foreground">×π</span>
+              <Input
+                type="number" step={0.05} min={0} max={2}
+                value={step[angleKeys[qi]]}
+                onChange={e => onChange({ ...step, [angleKeys[qi]]: parseFloat(e.target.value) || 0 })}
+                className="h-7 text-xs w-16"
+              />
+            </div>
+          )}
+        </div>
+      ))}
+      {nq >= 2 && cnotPairs.filter(([,,t]) => t < nq).map(([key, c, t]) => (
+        <div key={key} className="flex items-center gap-2">
+          <Switch
+            checked={step[key] as boolean}
+            onCheckedChange={v => onChange({ ...step, [key]: v })}
+            id={`sv-cnot-${stepIdx}-${c}${t}`}
+          />
+          <Label htmlFor={`sv-cnot-${stepIdx}-${c}${t}`} className="text-xs cursor-pointer">
+            CNOT q{c}→q{t}
+          </Label>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Statevector sub-tab ───────────────────────────────────────────────────────
 
 function StatevectorPanel() {
-  const { state, buildQuantumRequest } = useAppContext();
+  const { state, buildQuantumRequest, setNumQubits, setShots, setUseSeed, setSeedVal, setStep } = useAppContext();
   const [result, setResult]   = useState<QuantumSimulateResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
@@ -71,7 +150,7 @@ function StatevectorPanel() {
     }
   };
 
-  const nq = state.num_qubits;
+  const { num_qubits: nq, shots, use_seed, seed_val, step0, step1, step2 } = state;
   const dim = result ? result.statevector_real.length : Math.pow(2, nq);
 
   const chartData = result ? result.statevector_real.map((re, i) => {
@@ -89,19 +168,73 @@ function StatevectorPanel() {
 
   return (
     <div className="space-y-6">
+      {/* ── Circuit Controls ─────────────────────────────────────────────── */}
+      <Card className="border-accent/20 bg-gradient-to-br from-card to-accent/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="w-5 h-5 text-primary" />
+            Circuit Controls
+            <Badge variant="outline" className="ml-auto border-primary/30 bg-primary/10 text-xs">
+              {nq} qubit{nq > 1 ? "s" : ""} · {dim}-dim
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Qubits */}
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs">
+              <Label>Qubits</Label>
+              <span className="font-mono text-primary">{nq}</span>
+            </div>
+            <Slider value={[nq]} onValueChange={([v]) => setNumQubits(v)} min={1} max={4} step={1} />
+          </div>
+          {/* Shots */}
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs">
+              <Label>Shots</Label>
+              <span className="font-mono text-primary">{shots.toLocaleString()}</span>
+            </div>
+            <Slider value={[shots]} onValueChange={([v]) => setShots(v)} min={128} max={16384} step={128} />
+          </div>
+          {/* Seed */}
+          <div className="flex items-center gap-2">
+            <Switch checked={use_seed} onCheckedChange={setUseSeed} id="sv-use-seed" />
+            <Label htmlFor="sv-use-seed" className="text-xs cursor-pointer">Fixed seed</Label>
+          </div>
+          {use_seed && (
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <Label>Seed value</Label>
+                <span className="font-mono text-primary">{seed_val}</span>
+              </div>
+              <Slider value={[seed_val]} onValueChange={([v]) => setSeedVal(v)} min={0} max={9999} step={1} />
+            </div>
+          )}
+          <Separator />
+          {/* Gate steps */}
+          <div className="space-y-3">
+            <StepRow stepIdx={0} nq={nq} step={step0} onChange={s => setStep(0, s)} />
+            <StepRow stepIdx={1} nq={nq} step={step1} onChange={s => setStep(1, s)} />
+            <StepRow stepIdx={2} nq={nq} step={step2} onChange={s => setStep(2, s)} />
+          </div>
+          {/* ASCII preview */}
+          <pre className="text-[10px] font-mono bg-black/20 p-2 rounded overflow-x-auto text-green-400 leading-relaxed">
+            {buildAsciiCircuit(state)}
+          </pre>
+        </CardContent>
+      </Card>
+
+      {/* ── Statevector Analysis ─────────────────────────────────────────── */}
       <Card className="border-accent/20 bg-gradient-to-br from-card to-accent/5">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Atom className="w-5 h-5 text-primary" />
             Statevector Analysis
-            <Badge variant="outline" className="ml-auto border-primary/30 bg-primary/10 text-xs">
-              {dim}-dim Hilbert space
-            </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Displays ideal (noise-free) statevector amplitudes and phases from the sidebar circuit.
+            Displays ideal (noise-free) statevector amplitudes and phases for the circuit configured above.
           </p>
           <Button onClick={run} disabled={loading} className="w-full h-10">
             {loading
@@ -250,7 +383,7 @@ function MeasurementPanel() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Compares ideal vs noisy measurement distributions. TV distance measures how much noise corrupts the output — enable noise channels in the sidebar.
+            Compares ideal vs noisy measurement distributions. TV distance measures how much noise corrupts the output — configure noise channels in the Noise tab.
           </p>
           <Button onClick={run} disabled={loading} className="w-full h-10">
             {loading
@@ -732,6 +865,128 @@ function IBMHardwarePanel() {
   );
 }
 
+// ── Noise Configuration sub-tab ───────────────────────────────────────────────
+
+function NoiseSlider({ label, value, onChange, min = 0, max = 0.2, step = 0.005 }: {
+  label: string; value: number; onChange: (v: number) => void;
+  min?: number; max?: number; step?: number;
+}) {
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-xs">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="font-mono text-primary">{value.toFixed(3)}</span>
+      </div>
+      <Slider value={[value]} onValueChange={([v]) => onChange(v)} min={min} max={max} step={step} />
+    </div>
+  );
+}
+
+function NoiseConfigPanel() {
+  const { state, setNoise } = useAppContext();
+  const { noise, num_qubits } = state;
+
+  return (
+    <div className="space-y-6">
+      <Card className="border-accent/20 bg-gradient-to-br from-card to-accent/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="w-5 h-5 text-primary" />
+            Noise Configuration
+            <Badge variant="outline" className="ml-auto border-accent/30 text-xs">
+              Qiskit Aer noise model
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Configure noise channels applied during simulation. Active channels affect the Measurement tab's noisy distribution and all noise-aware quantum endpoints.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Depolarizing */}
+      <Card className="border-accent/20">
+        <CardContent className="pt-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Switch checked={noise.enable_depolarizing}
+              onCheckedChange={v => setNoise({ ...noise, enable_depolarizing: v })} id="ci-dep" />
+            <Label htmlFor="ci-dep" className="text-sm font-medium cursor-pointer">Depolarizing Noise</Label>
+          </div>
+          {noise.enable_depolarizing && (
+            <div className="pl-2 space-y-3">
+              <NoiseSlider label="Step T0" value={noise.pdep0} onChange={v => setNoise({ ...noise, pdep0: v })} />
+              <NoiseSlider label="Step T1" value={noise.pdep1} onChange={v => setNoise({ ...noise, pdep1: v })} />
+              <NoiseSlider label="Step T2" value={noise.pdep2} onChange={v => setNoise({ ...noise, pdep2: v })} />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Amplitude damping */}
+      <Card className="border-accent/20">
+        <CardContent className="pt-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Switch checked={noise.enable_amplitude_damping}
+              onCheckedChange={v => setNoise({ ...noise, enable_amplitude_damping: v })} id="ci-amp" />
+            <Label htmlFor="ci-amp" className="text-sm font-medium cursor-pointer">Amplitude Damping</Label>
+          </div>
+          {noise.enable_amplitude_damping && (
+            <div className="pl-2 space-y-3">
+              <NoiseSlider label="Step T0" value={noise.pamp0} onChange={v => setNoise({ ...noise, pamp0: v })} />
+              <NoiseSlider label="Step T1" value={noise.pamp1} onChange={v => setNoise({ ...noise, pamp1: v })} />
+              <NoiseSlider label="Step T2" value={noise.pamp2} onChange={v => setNoise({ ...noise, pamp2: v })} />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Phase damping */}
+      <Card className="border-accent/20">
+        <CardContent className="pt-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Switch checked={noise.enable_phase_damping}
+              onCheckedChange={v => setNoise({ ...noise, enable_phase_damping: v })} id="ci-phs" />
+            <Label htmlFor="ci-phs" className="text-sm font-medium cursor-pointer">Phase Damping</Label>
+          </div>
+          {noise.enable_phase_damping && (
+            <div className="pl-2 space-y-3">
+              <NoiseSlider label="Step T0" value={noise.pph0} onChange={v => setNoise({ ...noise, pph0: v })} />
+              <NoiseSlider label="Step T1" value={noise.pph1} onChange={v => setNoise({ ...noise, pph1: v })} />
+              <NoiseSlider label="Step T2" value={noise.pph2} onChange={v => setNoise({ ...noise, pph2: v })} />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* CNOT noise */}
+      {num_qubits >= 2 && (
+        <Card className="border-accent/20">
+          <CardContent className="pt-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Switch checked={noise.enable_cnot_noise}
+                onCheckedChange={v => setNoise({ ...noise, enable_cnot_noise: v })} id="ci-cnot" />
+              <Label htmlFor="ci-cnot" className="text-sm font-medium cursor-pointer">CNOT Depolarizing</Label>
+            </div>
+            {noise.enable_cnot_noise && (
+              <div className="pl-2 space-y-3">
+                <NoiseSlider label="Step T0" value={noise.pcnot0} onChange={v => setNoise({ ...noise, pcnot0: v })} />
+                <NoiseSlider label="Step T1" value={noise.pcnot1} onChange={v => setNoise({ ...noise, pcnot1: v })} />
+                <NoiseSlider label="Step T2" value={noise.pcnot2} onChange={v => setNoise({ ...noise, pcnot2: v })} />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <Separator />
+      <p className="text-xs text-muted-foreground">
+        Changes take effect immediately on the next simulation run. Use the Measurement tab to see the impact of noise on output distributions.
+      </p>
+    </div>
+  );
+}
+
 // ── Combined tab ──────────────────────────────────────────────────────────────
 
 export function CircuitInspectorDashboard() {
@@ -745,7 +1000,7 @@ export function CircuitInspectorDashboard() {
       </div>
 
       <Tabs defaultValue="statevector">
-        <TabsList className="grid grid-cols-4 w-full">
+        <TabsList className="grid grid-cols-5 w-full">
           <TabsTrigger value="statevector" className="flex items-center gap-1.5 text-xs">
             <Atom className="w-3.5 h-3.5" />Statevector
           </TabsTrigger>
@@ -757,6 +1012,9 @@ export function CircuitInspectorDashboard() {
           </TabsTrigger>
           <TabsTrigger value="ibm" className="flex items-center gap-1.5 text-xs">
             <Cpu className="w-3.5 h-3.5" />IBM Hardware
+          </TabsTrigger>
+          <TabsTrigger value="noise" className="flex items-center gap-1.5 text-xs">
+            <Settings className="w-3.5 h-3.5" />Noise
           </TabsTrigger>
         </TabsList>
 
@@ -771,6 +1029,9 @@ export function CircuitInspectorDashboard() {
         </TabsContent>
         <TabsContent value="ibm" className="mt-4">
           <IBMHardwarePanel />
+        </TabsContent>
+        <TabsContent value="noise" className="mt-4">
+          <NoiseConfigPanel />
         </TabsContent>
       </Tabs>
     </div>

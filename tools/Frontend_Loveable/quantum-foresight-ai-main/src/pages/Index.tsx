@@ -53,9 +53,7 @@ const TABS = [
   { value: "insider",        label: "Insider Trading",    icon: Briefcase },
   { value: "sentiment",      label: "Sentiment Analysis", icon: Newspaper },
   { value: "credit-risk",    label: "Credit Risk",        icon: TrendingDown },
-  { value: "prompt-studio",  label: "Prompt Studio",      icon: Wand2 },
   // ── Quantum / Qiskit ─────────────────────────────────────────────────
-  { value: "qtbn",           label: "Q-TBN",              icon: Brain },
   { value: "foresight",      label: "Foresight",          icon: Thermometer },
   { value: "circuit-inspector", label: "Circuit Inspector", icon: Atom },
   { value: "reduced",           label: "Reduced States",    icon: Layers },
@@ -69,6 +67,7 @@ const TABS = [
 ] as const;
 
 // ── Subscription gating ──────────────────────────────────────────────────────
+const DEV_BYPASS      = import.meta.env.DEV; // unlocks all tabs on localhost
 const PRO_TABS        = new Set(["qaoa", "vqe", "credit-risk"]);
 const ENTERPRISE_TABS = new Set(["quantum-hardware"]);
 
@@ -206,24 +205,24 @@ function AppLayout() {
             <TabsContent value="insider"        className="mt-0"><InsiderTradingDashboard /></TabsContent>
             <TabsContent value="qtbn"           className="mt-0"><QTBNDashboard /></TabsContent>
             <TabsContent value="qaoa" className="mt-0">
-              {subscription.is_pro || subscription.is_enterprise
+              {DEV_BYPASS || subscription.is_pro || subscription.is_enterprise
                 ? <QAOADashboard />
                 : <LockedTabOverlay requiredPlan="pro" tabName="Toy QAOA" onUpgrade={() => openUpgrade("pro")} />}
             </TabsContent>
             <TabsContent value="sentiment"      className="mt-0"><SentimentDashboard /></TabsContent>
             <TabsContent value="credit-risk" className="mt-0">
-              {subscription.is_pro || subscription.is_enterprise
+              {DEV_BYPASS || subscription.is_pro || subscription.is_enterprise
                 ? <CreditRiskDashboard />
                 : <LockedTabOverlay requiredPlan="pro" tabName="Credit Risk" onUpgrade={() => openUpgrade("pro")} />}
             </TabsContent>
             <TabsContent value="prompt-studio"  className="mt-0"><PromptStudioDashboard /></TabsContent>
             <TabsContent value="vqe" className="mt-0">
-              {subscription.is_pro || subscription.is_enterprise
+              {DEV_BYPASS || subscription.is_pro || subscription.is_enterprise
                 ? <VQEDashboard />
                 : <LockedTabOverlay requiredPlan="pro" tabName="VQE" onUpgrade={() => openUpgrade("pro")} />}
             </TabsContent>
             <TabsContent value="quantum-hardware" className="mt-0">
-              {subscription.is_enterprise
+              {DEV_BYPASS || subscription.is_enterprise
                 ? <QuantumHardwareTab />
                 : <LockedTabOverlay requiredPlan="enterprise" tabName="Quantum Hardware" onUpgrade={() => openUpgrade("enterprise")} />}
             </TabsContent>

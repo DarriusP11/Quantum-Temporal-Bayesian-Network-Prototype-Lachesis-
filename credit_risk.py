@@ -55,7 +55,7 @@ try:
     from qiskit.circuit.library import (                 # type: ignore
         WeightedAdder, LinearAmplitudeFunction, IntegerComparator,
     )
-    from qiskit_aer.primitives import Sampler as _AerSampler  # type: ignore
+    from qiskit.primitives import StatevectorSampler as _AerSampler  # type: ignore
     _HAS_QISKIT_LIBS = True
 except ImportError:
     _HAS_QISKIT_LIBS = False
@@ -333,8 +333,8 @@ def _quantum_credit_risk(
     c_approx = 0.25
     el_obj = LinearAmplitudeFunction(
         n_sum,
-        slopes=[1],
-        offsets=[0],
+        slope=1,
+        offset=0,
         domain=(0, max_loss_units),
         image=(0, max_loss_units),
         rescaling_factor=c_approx,
@@ -342,7 +342,7 @@ def _quantum_credit_risk(
     state_prep_el = state_prep.copy()
     state_prep_el.append(el_obj, sum_qubits + [n_total])
 
-    sampler = _AerSampler(shots=shots)
+    sampler = _AerSampler(default_shots=shots)
     ae_el   = _IAE(epsilon_target=epsilon, alpha=0.05, sampler=sampler)
     prob_el = _EstProb(
         state_preparation=state_prep_el,
@@ -363,8 +363,8 @@ def _quantum_credit_risk(
     if var_units < max_loss_units:
         cvar_obj = LinearAmplitudeFunction(
             n_sum,
-            slopes=[0, 1],
-            offsets=[0, 0],
+            slope=[0, 1],
+            offset=[0, 0],
             domain=(0, max_loss_units),
             image=(0, max_loss_units - var_units),
             rescaling_factor=c_approx,
@@ -372,7 +372,7 @@ def _quantum_credit_risk(
         )
         state_prep_cvar = state_prep.copy()
         state_prep_cvar.append(cvar_obj, sum_qubits + [n_total])
-        ae_cvar = _IAE(epsilon_target=epsilon, alpha=0.05, sampler=_AerSampler(shots=shots))
+        ae_cvar = _IAE(epsilon_target=epsilon, alpha=0.05, sampler=_AerSampler(default_shots=shots))
         prob_cvar = _EstProb(
             state_preparation=state_prep_cvar,
             objective_qubits=[n_total],
