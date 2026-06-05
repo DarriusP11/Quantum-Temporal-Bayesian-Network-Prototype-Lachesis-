@@ -51,16 +51,6 @@ export function AppSidebar({ isOwner = false }: { isOwner?: boolean }) {
         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Section</p>
         <div className="flex gap-1 p-1 bg-muted/40 rounded-lg border border-accent/10">
           <button
-            onClick={() => setActiveSection('quantum')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-md text-xs font-semibold transition-all ${
-              activeSection === 'quantum'
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Atom className="w-3 h-3" />Quantum
-          </button>
-          <button
             onClick={() => setActiveSection('classical')}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-md text-xs font-semibold transition-all ${
               activeSection === 'classical'
@@ -69,6 +59,16 @@ export function AppSidebar({ isOwner = false }: { isOwner?: boolean }) {
             }`}
           >
             <BarChart2 className="w-3 h-3" />Classical
+          </button>
+          <button
+            onClick={() => setActiveSection('quantum')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-md text-xs font-semibold transition-all ${
+              activeSection === 'quantum'
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Atom className="w-3 h-3" />Quantum
           </button>
         </div>
         <p className="text-[10px] text-muted-foreground mt-1.5">

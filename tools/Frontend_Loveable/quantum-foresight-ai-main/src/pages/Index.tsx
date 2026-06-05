@@ -52,23 +52,18 @@ import { ClassicalCreditRiskDashboard } from "@/components/ClassicalCreditRiskDa
 const OWNER_EMAIL = "darriusperson@gmail.com";
 
 const TABS = [
-  // ── AI / Classical ───────────────────────────────────────────────────
-  { value: "assistant",      label: "Lachesis AI",        icon: Sparkles },
-  { value: "finance",        label: "Financial Analytics",icon: TrendingUp },
-  { value: "insider",        label: "Insider Trading",    icon: Briefcase },
-  { value: "sentiment",      label: "Sentiment Analysis", icon: Newspaper },
-  { value: "credit-risk",    label: "Credit Risk",        icon: TrendingDown },
   // ── Quantum / Qiskit ─────────────────────────────────────────────────
-  { value: "foresight",      label: "Foresight",          icon: Thermometer },
-  { value: "circuit-inspector", label: "Circuit Inspector", icon: Atom },
-  { value: "reduced",           label: "Reduced States",    icon: Layers },
-  { value: "fidelity",       label: "Fidelity & Export",  icon: Shield },
-  { value: "presets",        label: "Presets",            icon: BookOpen },
-  { value: "scenarios",      label: "Present Scenarios",  icon: BarChart2 },
-  { value: "advanced",       label: "Advanced Quantum",   icon: Gauge },
-  { value: "qaoa",             label: "Toy QAOA",            icon: Zap },
-  { value: "vqe",             label: "VQE",                 icon: LineChart },
-  { value: "quantum-hardware",label: "Quantum Hardware",    icon: Cpu },
+  { value: "credit-risk",       label: "Credit Risk",        icon: TrendingDown },
+  { value: "foresight",         label: "Foresight",          icon: Thermometer },
+  { value: "circuit-inspector", label: "Circuit Inspector",  icon: Atom },
+  { value: "reduced",           label: "Reduced States",     icon: Layers },
+  { value: "fidelity",          label: "Fidelity & Export",  icon: Shield },
+  { value: "presets",           label: "Presets",            icon: BookOpen },
+  { value: "scenarios",         label: "Present Scenarios",  icon: BarChart2 },
+  { value: "advanced",          label: "Advanced Quantum",   icon: Gauge },
+  { value: "qaoa",              label: "Toy QAOA",           icon: Zap },
+  { value: "vqe",               label: "VQE",                icon: LineChart },
+  { value: "quantum-hardware",  label: "Quantum Hardware",   icon: Cpu },
 ] as const;
 
 // ── Subscription gating ──────────────────────────────────────────────────────
@@ -186,7 +181,7 @@ function AppLayout() {
 
         {/* ── Quantum Tab System ─────────────────────────────────────────── */}
         {activeSection === 'quantum' && (
-        <Tabs defaultValue="assistant" className="flex-1 flex flex-col overflow-hidden">
+        <Tabs defaultValue="foresight" className="flex-1 flex flex-col overflow-hidden">
           <div className="border-b border-border/40 bg-card shrink-0 overflow-x-auto">
             <TabsList className="flex w-max min-w-full bg-transparent rounded-none h-10 px-2 gap-0.5">
               {TABS.map(({ value, label, icon: Icon }) => (
@@ -216,15 +211,12 @@ function AppLayout() {
             <TabsContent value="scenarios"      className="mt-0"><PresentScenariosDashboard /></TabsContent>
             <TabsContent value="foresight"      className="mt-0"><ForesightDashboard /></TabsContent>
             <TabsContent value="advanced"       className="mt-0"><AdvancedQuantumDashboard /></TabsContent>
-            <TabsContent value="finance"        className="mt-0"><FinancialDashboard /></TabsContent>
-            <TabsContent value="insider"        className="mt-0"><InsiderTradingDashboard /></TabsContent>
             <TabsContent value="qtbn"           className="mt-0"><QTBNDashboard /></TabsContent>
             <TabsContent value="qaoa" className="mt-0">
               {DEV_BYPASS || subscription.is_pro || subscription.is_enterprise
                 ? <QAOADashboard />
                 : <LockedTabOverlay requiredPlan="pro" tabName="Toy QAOA" onUpgrade={() => openUpgrade("pro")} />}
             </TabsContent>
-            <TabsContent value="sentiment"      className="mt-0"><SentimentDashboard /></TabsContent>
             <TabsContent value="credit-risk" className="mt-0">
               {DEV_BYPASS || subscription.is_pro || subscription.is_enterprise
                 ? <CreditRiskDashboard />
@@ -241,7 +233,6 @@ function AppLayout() {
                 ? <QuantumHardwareTab />
                 : <LockedTabOverlay requiredPlan="enterprise" tabName="Quantum Hardware" onUpgrade={() => openUpgrade("enterprise")} />}
             </TabsContent>
-            <TabsContent value="assistant"      className="mt-0"><LachesisAssistant /></TabsContent>
             {isOwner && (
               <TabsContent value="admin"        className="mt-0"><AdminDashboard /></TabsContent>
             )}
