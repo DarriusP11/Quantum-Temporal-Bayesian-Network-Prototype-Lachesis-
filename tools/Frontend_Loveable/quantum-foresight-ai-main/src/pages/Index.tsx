@@ -41,8 +41,13 @@ import { QuantumHardwareTab }        from "@/components/QuantumHardwareTab";
 import {
   Atom, Layers, Shield, BookOpen, BarChart2,
   TrendingUp, TrendingDown, Briefcase, Sparkles, Brain, Zap, Newspaper,
-  Wand2, Gauge, KeyRound, Thermometer, LineChart, Cpu,
+  Wand2, Gauge, KeyRound, Thermometer, LineChart, Cpu, Wallet, PiggyBank, ShieldCheck,
 } from "lucide-react";
+
+// ── Classical tabs ────────────────────────────────────────────────────────────
+import { BudgetingDashboard }           from "@/components/BudgetingDashboard";
+import { RetirementDashboard }          from "@/components/RetirementDashboard";
+import { ClassicalCreditRiskDashboard } from "@/components/ClassicalCreditRiskDashboard";
 
 const OWNER_EMAIL = "darriusperson@gmail.com";
 
@@ -71,6 +76,17 @@ const DEV_BYPASS      = import.meta.env.DEV; // unlocks all tabs on localhost
 const PRO_TABS        = new Set(["qaoa", "vqe", "credit-risk"]);
 const ENTERPRISE_TABS = new Set(["quantum-hardware"]);
 
+// ── Classical tabs definition ─────────────────────────────────────────────────
+const CLASSICAL_TABS = [
+  { value: "assistant",        label: "Lachesis AI",         icon: Sparkles },
+  { value: "finance",          label: "Financial Analytics", icon: TrendingUp },
+  { value: "insider",          label: "Insider Trading",     icon: Briefcase },
+  { value: "sentiment",        label: "Sentiment Analysis",  icon: Newspaper },
+  { value: "budgeting",        label: "Budgeting",           icon: Wallet },
+  { value: "retirement",       label: "Retirement",          icon: PiggyBank },
+  { value: "classical-credit", label: "Credit Risk",         icon: ShieldCheck },
+] as const;
+
 function LanguageSelector() {
   const { state, setLanguage } = useAppContext();
   const current = SUPPORTED_LANGUAGES.find(l => l.code === state.language) ?? SUPPORTED_LANGUAGES[0];
@@ -96,6 +112,7 @@ function LanguageSelector() {
 function AppLayout() {
   const { user } = useAuth();
   const isOwner = user?.email?.toLowerCase() === OWNER_EMAIL;
+  const { activeSection } = useAppContext();
 
   // ── Subscription ────────────────────────────────────────────────────────
   const { subscription, refresh } = useSubscription();
@@ -167,9 +184,9 @@ function AppLayout() {
           </div>
         </div>
 
-        {/* Tab system */}
+        {/* ── Quantum Tab System ─────────────────────────────────────────── */}
+        {activeSection === 'quantum' && (
         <Tabs defaultValue="assistant" className="flex-1 flex flex-col overflow-hidden">
-          {/* Scrollable tab strip */}
           <div className="border-b border-border/40 bg-card shrink-0 overflow-x-auto">
             <TabsList className="flex w-max min-w-full bg-transparent rounded-none h-10 px-2 gap-0.5">
               {TABS.map(({ value, label, icon: Icon }) => (
@@ -191,8 +208,6 @@ function AppLayout() {
               )}
             </TabsList>
           </div>
-
-          {/* Scrollable content area */}
           <div className="flex-1 overflow-y-auto px-6 py-6">
             <TabsContent value="circuit-inspector" className="mt-0"><CircuitInspectorDashboard /></TabsContent>
             <TabsContent value="reduced"          className="mt-0"><ReducedStatesDashboard /></TabsContent>
@@ -232,6 +247,63 @@ function AppLayout() {
             )}
           </div>
         </Tabs>
+        )}
+
+        {/* ── Classical Tab System ───────────────────────────────────────── */}
+        {activeSection === 'classical' && (
+        <Tabs defaultValue="assistant" className="flex-1 flex flex-col overflow-hidden">
+          <div className="border-b border-border/40 bg-card shrink-0 overflow-x-auto">
+            <TabsList className="flex w-max min-w-full bg-transparent rounded-none h-10 px-2 gap-0.5">
+              {CLASSICAL_TABS.map(({ value, label, icon: Icon }) => (
+                <TabsTrigger
+                  key={value}
+                  value={value}
+                  className="flex items-center gap-1.5 whitespace-nowrap px-3 h-9 text-xs rounded-sm data-[state=active]:bg-transparent data-[state=active]:text-emerald-400 data-[state=active]:shadow-[inset_0_-2px_0_theme(colors.emerald.400)]"
+                >
+                  <Icon className="w-3 h-3" />{label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
+          <div className="flex-1 overflow-y-auto px-6 py-6">
+            <TabsContent value="assistant" className="mt-0">
+              {DEV_BYPASS || subscription.is_basic || subscription.is_pro || subscription.is_enterprise
+                ? <LachesisAssistant />
+                : <LockedTabOverlay requiredPlan="basic" tabName="Lachesis AI" onUpgrade={() => openUpgrade("pro")} />}
+            </TabsContent>
+            <TabsContent value="finance" className="mt-0">
+              {DEV_BYPASS || subscription.is_basic || subscription.is_pro || subscription.is_enterprise
+                ? <FinancialDashboard />
+                : <LockedTabOverlay requiredPlan="basic" tabName="Financial Analytics" onUpgrade={() => openUpgrade("pro")} />}
+            </TabsContent>
+            <TabsContent value="insider" className="mt-0">
+              {DEV_BYPASS || subscription.is_basic || subscription.is_pro || subscription.is_enterprise
+                ? <InsiderTradingDashboard />
+                : <LockedTabOverlay requiredPlan="basic" tabName="Insider Trading" onUpgrade={() => openUpgrade("pro")} />}
+            </TabsContent>
+            <TabsContent value="sentiment" className="mt-0">
+              {DEV_BYPASS || subscription.is_basic || subscription.is_pro || subscription.is_enterprise
+                ? <SentimentDashboard />
+                : <LockedTabOverlay requiredPlan="basic" tabName="Sentiment Analysis" onUpgrade={() => openUpgrade("pro")} />}
+            </TabsContent>
+            <TabsContent value="budgeting" className="mt-0">
+              {DEV_BYPASS || subscription.is_basic || subscription.is_pro || subscription.is_enterprise
+                ? <BudgetingDashboard />
+                : <LockedTabOverlay requiredPlan="basic" tabName="Budgeting" onUpgrade={() => openUpgrade("pro")} />}
+            </TabsContent>
+            <TabsContent value="retirement" className="mt-0">
+              {DEV_BYPASS || subscription.is_basic || subscription.is_pro || subscription.is_enterprise
+                ? <RetirementDashboard />
+                : <LockedTabOverlay requiredPlan="basic" tabName="Retirement" onUpgrade={() => openUpgrade("pro")} />}
+            </TabsContent>
+            <TabsContent value="classical-credit" className="mt-0">
+              {DEV_BYPASS || subscription.is_basic || subscription.is_pro || subscription.is_enterprise
+                ? <ClassicalCreditRiskDashboard />
+                : <LockedTabOverlay requiredPlan="basic" tabName="Credit Risk" onUpgrade={() => openUpgrade("pro")} />}
+            </TabsContent>
+          </div>
+        </Tabs>
+        )}
       </div>
     </div>
     </>

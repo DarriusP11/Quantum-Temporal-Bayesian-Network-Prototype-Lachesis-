@@ -183,12 +183,16 @@ interface AppContextValue {
   setCreditRiskSnapshot: (s: CreditRiskSnapshot | null) => void;
   /** Build the API request body from current state (for /api/quantum/simulate) */
   buildQuantumRequest: () => object;
+  /** Active app section — 'quantum' or 'classical' */
+  activeSection: 'quantum' | 'classical';
+  setActiveSection: (s: 'quantum' | 'classical') => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>(DEFAULT_STATE);
+  const [activeSection, setActiveSection] = useState<'quantum' | 'classical'>('quantum');
 
   const setNumQubits = useCallback((n: number) =>
     setState(s => ({ ...s, num_qubits: n })), []);
@@ -238,7 +242,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     <AppContext.Provider value={{
       state, setNumQubits, setShots, setUseSeed, setSeedVal,
       setStep, setNoise, setFinance, setLanguage, resetToDefaults, buildQuantumRequest,
-      setCreditRiskSnapshot,
+      setCreditRiskSnapshot, activeSection, setActiveSection,
     }}>
       {children}
     </AppContext.Provider>

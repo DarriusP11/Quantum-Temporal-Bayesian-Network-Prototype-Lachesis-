@@ -2,18 +2,22 @@ import { Lock, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface LockedTabOverlayProps {
-  requiredPlan: "pro" | "enterprise";
+  requiredPlan: "basic" | "pro" | "enterprise";
   tabName: string;
   onUpgrade: () => void;
 }
 
 export function LockedTabOverlay({ requiredPlan, tabName, onUpgrade }: LockedTabOverlayProps) {
-  const planLabel = requiredPlan === "enterprise" ? "Enterprise" : "Pro";
+  const planLabel = requiredPlan === "enterprise" ? "Enterprise" : requiredPlan === "basic" ? "Basic" : "Pro";
   const planColor = requiredPlan === "enterprise"
     ? "from-amber-500/20 to-orange-500/20 border-amber-500/30"
+    : requiredPlan === "basic"
+    ? "from-emerald-500/20 to-teal-500/20 border-emerald-500/30"
     : "from-primary/20 to-accent/20 border-primary/30";
   const btnColor  = requiredPlan === "enterprise"
     ? "bg-amber-500 hover:bg-amber-600 text-white"
+    : requiredPlan === "basic"
+    ? "bg-emerald-500 hover:bg-emerald-600 text-white"
     : "";
 
   return (
@@ -28,9 +32,9 @@ export function LockedTabOverlay({ requiredPlan, tabName, onUpgrade }: LockedTab
             {tabName} requires {planLabel}
           </h2>
           <p className="text-sm text-muted-foreground">
-            Upgrade your plan to unlock{" "}
-            <span className="font-medium text-foreground">{tabName}</span> and all{" "}
-            {planLabel} features.
+            {requiredPlan === "basic"
+              ? <>Unlock <span className="font-medium text-foreground">{tabName}</span> and all Classical financial tools for just <span className="font-semibold text-emerald-400">$5/month</span>.</>
+              : <>Upgrade your plan to unlock <span className="font-medium text-foreground">{tabName}</span> and all {planLabel} features.</>}
           </p>
         </div>
 

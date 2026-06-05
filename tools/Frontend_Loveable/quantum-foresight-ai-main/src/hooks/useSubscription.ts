@@ -2,12 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { get } from "@/lib/api";
 
-export type Plan = "free" | "pro" | "enterprise";
+export type Plan = "free" | "basic" | "pro" | "enterprise";
 
 export interface SubscriptionState {
   plan: Plan;
   status: string;
   period_end: string | null;
+  is_basic: boolean;
   is_pro: boolean;
   is_enterprise: boolean;
   loading: boolean;
@@ -17,6 +18,7 @@ const DEFAULT_STATE: SubscriptionState = {
   plan: "free",
   status: "active",
   period_end: null,
+  is_basic: false,
   is_pro: false,
   is_enterprise: false,
   loading: true,
