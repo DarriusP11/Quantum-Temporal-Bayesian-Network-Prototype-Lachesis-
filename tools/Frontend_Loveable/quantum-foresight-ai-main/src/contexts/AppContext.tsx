@@ -214,7 +214,7 @@ const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>(DEFAULT_STATE);
-  const [activeSection, setActiveSection] = useState<'quantum' | 'classical'>('quantum');
+  const [activeSection, setActiveSection] = useState<'quantum' | 'classical'>('classical');
 
   const setNumQubits = useCallback((n: number) =>
     setState(s => ({ ...s, num_qubits: n })), []);
