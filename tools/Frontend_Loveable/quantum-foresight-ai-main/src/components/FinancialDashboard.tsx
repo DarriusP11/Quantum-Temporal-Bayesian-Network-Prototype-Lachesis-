@@ -368,7 +368,10 @@ export const FinancialDashboard = () => {
       });
       setData(res);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(msg.includes("Failed to fetch")
+        ? "Cannot reach the API server. Make sure the backend is running:\n\ncd \"/Applications/Quantum Temporal Bayesian Network Prototype\"\npython3 -m uvicorn api_server:app --reload --port 8000"
+        : msg);
     } finally {
       setIsLoading(false);
     }

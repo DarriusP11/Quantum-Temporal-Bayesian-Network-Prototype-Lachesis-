@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -109,6 +109,22 @@ function AppLayout() {
   const isOwner = user?.email?.toLowerCase() === OWNER_EMAIL;
   const { activeSection } = useAppContext();
 
+  // ── Backend health check ─────────────────────────────────────────────────
+  const [apiOnline, setApiOnline] = useState<boolean | null>(null);
+  useEffect(() => {
+    const check = async () => {
+      try {
+        await fetch(`${import.meta.env.VITE_API_URL ?? "http://localhost:8000"}/health`);
+        setApiOnline(true);
+      } catch {
+        setApiOnline(false);
+      }
+    };
+    check();
+    const id = setInterval(check, 15000);
+    return () => clearInterval(id);
+  }, []);
+
   // ── Subscription ────────────────────────────────────────────────────────
   const { subscription, refresh } = useSubscription();
   const [pricingOpen, setPricingOpen]   = useState(false);
@@ -167,6 +183,16 @@ function AppLayout() {
               </Badge>
               {isOwner && (
                 <Badge className="bg-primary/20 text-primary border-primary/30 text-xs">Owner</Badge>
+              )}
+              {apiOnline !== null && (
+                <Badge
+                  variant="outline"
+                  className={`text-xs hidden sm:flex items-center gap-1.5 ${apiOnline ? "border-emerald-500/40 text-emerald-400" : "border-red-500/40 text-red-400"}`}
+                  title={apiOnline ? "Backend API is running" : "Backend API is offline — run: python3 -m uvicorn api_server:app --reload --port 8000"}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${apiOnline ? "bg-emerald-400" : "bg-red-400"}`} />
+                  {apiOnline ? "API Online" : "API Offline"}
+                </Badge>
               )}
               <SubscriptionBadge
                 plan={subscription.plan}
