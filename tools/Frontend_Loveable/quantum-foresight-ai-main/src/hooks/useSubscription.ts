@@ -1,7 +1,3 @@
-import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { get } from "@/lib/api";
-
 export type Plan = "free" | "basic" | "pro" | "enterprise";
 
 export interface SubscriptionState {
@@ -14,6 +10,7 @@ export interface SubscriptionState {
   loading: boolean;
 }
 
+/* DEFAULT_STATE — used by real implementation below
 const DEFAULT_STATE: SubscriptionState = {
   plan: "free",
   status: "active",
@@ -23,6 +20,27 @@ const DEFAULT_STATE: SubscriptionState = {
   is_enterprise: false,
   loading: true,
 };
+*/
+
+// TESTING BYPASS — remove this block and uncomment the real implementation below to re-enable paywall
+const BYPASS_STATE: SubscriptionState = {
+  plan: "enterprise",
+  status: "active",
+  period_end: null,
+  is_basic: true,
+  is_pro: true,
+  is_enterprise: true,
+  loading: false,
+};
+
+export function useSubscription() {
+  return { subscription: BYPASS_STATE, refresh: async () => {} };
+}
+
+/* REAL IMPLEMENTATION — uncomment to re-enable paywall (restore imports and DEFAULT_STATE too)
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { get } from "@/lib/api";
 
 export function useSubscription() {
   const { user } = useAuth();
@@ -39,7 +57,6 @@ export function useSubscription() {
       );
       setSubscription({ ...data, loading: false });
     } catch {
-      // If billing endpoint not yet live, default to free
       setSubscription({ ...DEFAULT_STATE, loading: false });
     }
   }, [user?.id]);
@@ -50,3 +67,4 @@ export function useSubscription() {
 
   return { subscription, refresh };
 }
+*/
