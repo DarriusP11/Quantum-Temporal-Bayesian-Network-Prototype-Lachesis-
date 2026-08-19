@@ -1,4 +1,4 @@
-import { Zap, Crown, Star } from "lucide-react";
+import { Zap, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { type Plan } from "@/hooks/useSubscription";
@@ -11,9 +11,8 @@ interface SubscriptionBadgeProps {
 }
 
 const PLAN_CONFIG: Record<Plan, { label: string; icon: typeof Zap; className: string }> = {
-  free:       { label: "Free",       icon: Star,  className: "bg-muted text-muted-foreground border-border" },
-  pro:        { label: "Pro",        icon: Zap,   className: "bg-primary/20 text-primary border-primary/40" },
-  enterprise: { label: "Enterprise", icon: Crown, className: "bg-amber-500/20 text-amber-400 border-amber-500/40" },
+  free:    { label: "Free",    icon: Star, className: "bg-muted text-muted-foreground border-border" },
+  premium: { label: "Premium", icon: Zap,  className: "bg-primary/20 text-primary border-primary/40" },
 };
 
 export function SubscriptionBadge({ plan, loading, onUpgrade, onManage }: SubscriptionBadgeProps) {

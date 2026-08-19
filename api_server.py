@@ -2471,11 +2471,10 @@ except ImportError:
 _STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 _FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://lachesisprototype3.vercel.app")
 
-# Price IDs — monthly only
-_PRICE_IDS = {
-    "pro":        os.environ.get("STRIPE_PRO_MONTHLY_PRICE_ID", ""),
-    "enterprise": os.environ.get("STRIPE_ENTERPRISE_MONTHLY_PRICE_ID", ""),
-}
+# Single-tier pricing — one price, one product. The frontend never needs to
+# know these; the server is the sole source of truth for what gets billed.
+_STRIPE_PRICE_ID = os.environ.get("STRIPE_PRICE_ID", "")
+_STRIPE_PRODUCT_ID = os.environ.get("STRIPE_PRODUCT_ID", "")
 
 # ── Helper: read / upsert subscription fields in Supabase profiles ──────────
 
@@ -2485,7 +2484,7 @@ def _get_profile(user_id: str) -> dict:
     if not supabase_url or not service_key:
         return {}
     headers = {"apikey": service_key, "Authorization": f"Bearer {service_key}"}
-    r = _http.get(
+    r = requests.get(
         f"{supabase_url}/rest/v1/profiles?user_id=eq.{user_id}&select=stripe_customer_id,subscription_id,plan,subscription_status,current_period_end",
         headers=headers, timeout=10
     )
@@ -2503,50 +2502,55 @@ def _update_profile(user_id: str, fields: dict):
         "Content-Type": "application/json",
         "Prefer": "return=minimal",
     }
-    _http.patch(
+    requests.patch(
         f"{supabase_url}/rest/v1/profiles?user_id=eq.{user_id}",
         json=fields, headers=headers, timeout=10
     )
 
 def _plan_from_price_id(price_id: str) -> str:
-    for key, pid in _PRICE_IDS.items():
-        if pid and pid == price_id:
-            return "enterprise" if key.startswith("enterprise") else "pro"
-    return "free"
+    return "premium" if _STRIPE_PRICE_ID and price_id == _STRIPE_PRICE_ID else "free"
+
+def _find_user_row_by_customer(customer_id: str) -> Optional[dict]:
+    """Webhook events identify a user by Stripe customer id, not our user_id —
+    this looks up the profile row (including the idempotency marker) by it."""
+    supabase_url = os.environ.get("SUPABASE_URL")
+    service_key  = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+    if not supabase_url or not service_key or not customer_id:
+        return None
+    headers = {"apikey": service_key, "Authorization": f"Bearer {service_key}"}
+    r = requests.get(
+        f"{supabase_url}/rest/v1/profiles?stripe_customer_id=eq.{customer_id}&select=user_id,last_webhook_event_id",
+        headers=headers, timeout=10
+    )
+    rows = r.json() if r.ok else []
+    return rows[0] if rows else None
 
 
 # ── Pydantic models ──────────────────────────────────────────────────────────
+# user_id is never a client-supplied field on any of these — it's always
+# resolved from a verified bearer token via Depends(_get_authenticated_user_id).
 
 class CreateSetupIntentRequest(BaseModel):
-    user_id: str
-    email:   str
+    email: str
 
 class CreateSubscriptionRequest(BaseModel):
-    user_id:           str
-    price_id:          str
     payment_method_id: str
-
-class CancelSubscriptionRequest(BaseModel):
-    user_id: str
-
-class PortalSessionRequest(BaseModel):
-    user_id: str
 
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
 
 @app.post("/api/billing/create-setup-intent")
-def billing_create_setup_intent(req: CreateSetupIntentRequest):
+def billing_create_setup_intent(req: CreateSetupIntentRequest, user_id: str = Depends(_get_authenticated_user_id)):
     if not _HAS_STRIPE:
         raise HTTPException(503, "Stripe not configured on server")
 
-    profile = _get_profile(req.user_id)
+    profile = _get_profile(user_id)
     customer_id = profile.get("stripe_customer_id")
 
     if not customer_id:
-        customer = _stripe.Customer.create(email=req.email, metadata={"user_id": req.user_id})
+        customer = _stripe.Customer.create(email=req.email, metadata={"user_id": user_id})
         customer_id = customer.id
-        _update_profile(req.user_id, {"stripe_customer_id": customer_id})
+        _update_profile(user_id, {"stripe_customer_id": customer_id})
 
     intent = _stripe.SetupIntent.create(
         customer=customer_id,
@@ -2556,11 +2560,13 @@ def billing_create_setup_intent(req: CreateSetupIntentRequest):
 
 
 @app.post("/api/billing/create-subscription")
-def billing_create_subscription(req: CreateSubscriptionRequest):
+def billing_create_subscription(req: CreateSubscriptionRequest, user_id: str = Depends(_get_authenticated_user_id)):
     if not _HAS_STRIPE:
         raise HTTPException(503, "Stripe not configured on server")
+    if not _STRIPE_PRICE_ID:
+        raise HTTPException(503, "Stripe price not configured on server")
 
-    profile = _get_profile(req.user_id)
+    profile = _get_profile(user_id)
     customer_id = profile.get("stripe_customer_id")
     if not customer_id:
         raise HTTPException(400, "No Stripe customer found — call create-setup-intent first")
@@ -2572,19 +2578,19 @@ def billing_create_subscription(req: CreateSubscriptionRequest):
         invoice_settings={"default_payment_method": req.payment_method_id}
     )
 
-    # Create subscription
+    # Create subscription — always against the server's one configured price
     sub = _stripe.Subscription.create(
         customer=customer_id,
-        items=[{"price": req.price_id}],
+        items=[{"price": _STRIPE_PRICE_ID}],
         payment_behavior="default_incomplete",
         expand=["latest_invoice.payment_intent"],
     )
 
-    plan = _plan_from_price_id(req.price_id)
+    plan = "premium"
     import datetime
     period_end = datetime.datetime.utcfromtimestamp(sub.current_period_end).isoformat() + "Z"
 
-    _update_profile(req.user_id, {
+    _update_profile(user_id, {
         "subscription_id":     sub.id,
         "plan":                plan,
         "subscription_status": sub.status,
@@ -2618,92 +2624,71 @@ async def billing_webhook(request: Request):
     except _stripe.error.SignatureVerificationError:
         raise HTTPException(400, "Invalid webhook signature")
 
-    etype = event["type"]
-    obj   = event["data"]["object"]
+    etype    = event["type"]
+    obj      = event["data"]["object"]
+    event_id = event.get("id", "")
 
     if etype in ("customer.subscription.created", "customer.subscription.updated"):
         customer_id = obj["customer"]
-        sub_id      = obj["id"]
-        status      = obj["status"]
-        price_id    = obj["items"]["data"][0]["price"]["id"] if obj["items"]["data"] else ""
-        plan        = _plan_from_price_id(price_id)
-        import datetime
-        period_end  = datetime.datetime.utcfromtimestamp(obj["current_period_end"]).isoformat() + "Z"
-
-        # Find user by stripe_customer_id
-        supabase_url = os.environ.get("SUPABASE_URL")
-        service_key  = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
-        if supabase_url and service_key:
-            headers = {"apikey": service_key, "Authorization": f"Bearer {service_key}"}
-            r = _http.get(
-                f"{supabase_url}/rest/v1/profiles?stripe_customer_id=eq.{customer_id}&select=user_id",
-                headers=headers, timeout=10
-            )
-            rows = r.json() if r.ok else []
-            if rows:
-                _update_profile(rows[0]["user_id"], {
-                    "subscription_id":     sub_id,
-                    "plan":                plan,
-                    "subscription_status": status,
-                    "current_period_end":  period_end,
-                })
+        row = _find_user_row_by_customer(customer_id)
+        if row and row.get("last_webhook_event_id") != event_id:
+            sub_id     = obj["id"]
+            status     = obj["status"]
+            price_id   = obj["items"]["data"][0]["price"]["id"] if obj["items"]["data"] else ""
+            plan       = _plan_from_price_id(price_id)
+            import datetime
+            period_end = datetime.datetime.utcfromtimestamp(obj["current_period_end"]).isoformat() + "Z"
+            _update_profile(row["user_id"], {
+                "subscription_id":      sub_id,
+                "plan":                 plan,
+                "subscription_status":  status,
+                "current_period_end":   period_end,
+                "last_webhook_event_id": event_id,
+            })
 
     elif etype == "customer.subscription.deleted":
         customer_id = obj["customer"]
-        supabase_url = os.environ.get("SUPABASE_URL")
-        service_key  = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
-        if supabase_url and service_key:
-            headers = {"apikey": service_key, "Authorization": f"Bearer {service_key}"}
-            r = _http.get(
-                f"{supabase_url}/rest/v1/profiles?stripe_customer_id=eq.{customer_id}&select=user_id",
-                headers=headers, timeout=10
-            )
-            rows = r.json() if r.ok else []
-            if rows:
-                _update_profile(rows[0]["user_id"], {
-                    "plan":                "free",
-                    "subscription_status": "canceled",
-                    "subscription_id":     None,
-                })
+        row = _find_user_row_by_customer(customer_id)
+        if row and row.get("last_webhook_event_id") != event_id:
+            _update_profile(row["user_id"], {
+                "plan":                 "free",
+                "subscription_status":  "canceled",
+                "subscription_id":      None,
+                "last_webhook_event_id": event_id,
+            })
 
     elif etype == "invoice.payment_failed":
         customer_id = obj.get("customer")
-        supabase_url = os.environ.get("SUPABASE_URL")
-        service_key  = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
-        if supabase_url and service_key and customer_id:
-            headers = {"apikey": service_key, "Authorization": f"Bearer {service_key}"}
-            r = _http.get(
-                f"{supabase_url}/rest/v1/profiles?stripe_customer_id=eq.{customer_id}&select=user_id",
-                headers=headers, timeout=10
-            )
-            rows = r.json() if r.ok else []
-            if rows:
-                _update_profile(rows[0]["user_id"], {"subscription_status": "past_due"})
+        row = _find_user_row_by_customer(customer_id)
+        if row and row.get("last_webhook_event_id") != event_id:
+            _update_profile(row["user_id"], {
+                "subscription_status":  "past_due",
+                "last_webhook_event_id": event_id,
+            })
 
     return {"received": True}
 
 
 @app.get("/api/billing/subscription-status")
-def billing_subscription_status(user_id: str):
-    profile = _get_profile(user_id)
-    plan    = profile.get("plan", "free")
-    status  = profile.get("subscription_status", "active")
+def billing_subscription_status(user_id: str = Depends(_get_authenticated_user_id)):
+    profile    = _get_profile(user_id)
+    plan       = profile.get("plan", "free")
+    status     = profile.get("subscription_status", "active")
     period_end = profile.get("current_period_end")
     return {
-        "plan":       plan,
-        "status":     status,
-        "period_end": period_end,
-        "is_pro":        plan in ("pro", "enterprise"),
-        "is_enterprise": plan == "enterprise",
+        "plan":          plan,
+        "status":        status,
+        "period_end":    period_end,
+        "is_subscribed": plan == "premium" and status in ("active", "trialing"),
     }
 
 
 @app.post("/api/billing/cancel-subscription")
-def billing_cancel_subscription(req: CancelSubscriptionRequest):
+def billing_cancel_subscription(user_id: str = Depends(_get_authenticated_user_id)):
     if not _HAS_STRIPE:
         raise HTTPException(503, "Stripe not configured on server")
 
-    profile = _get_profile(req.user_id)
+    profile = _get_profile(user_id)
     sub_id  = profile.get("subscription_id")
     if not sub_id:
         raise HTTPException(400, "No active subscription found")
@@ -2715,11 +2700,11 @@ def billing_cancel_subscription(req: CancelSubscriptionRequest):
 
 
 @app.post("/api/billing/portal-session")
-def billing_portal_session(req: PortalSessionRequest):
+def billing_portal_session(user_id: str = Depends(_get_authenticated_user_id)):
     if not _HAS_STRIPE:
         raise HTTPException(503, "Stripe not configured on server")
 
-    profile = _get_profile(req.user_id)
+    profile = _get_profile(user_id)
     customer_id = profile.get("stripe_customer_id")
     if not customer_id:
         raise HTTPException(400, "No Stripe customer found")
@@ -2734,17 +2719,17 @@ def billing_portal_session(req: PortalSessionRequest):
 @app.get("/api/billing/health")
 def billing_health():
     """
-    Owner-only diagnostic: verifies Stripe API key, price IDs, Supabase
-    billing columns, and webhook secret. Returns no user data.
+    Owner-only diagnostic: verifies Stripe API key, price/product IDs,
+    Supabase billing columns, and webhook secret. Returns no user data.
     """
     import requests as _http
 
     result: dict = {
-        "stripe_connected":       False,
-        "pro_price_valid":        False,
-        "enterprise_price_valid": False,
-        "supabase_ok":            False,
-        "webhook_secret_set":     bool(_STRIPE_WEBHOOK_SECRET),
+        "stripe_connected":   False,
+        "price_valid":        False,
+        "product_valid":      False,
+        "supabase_ok":        False,
+        "webhook_secret_set": bool(_STRIPE_WEBHOOK_SECRET),
     }
 
     # ── Stripe key reachability ───────────────────────────────────────────────
@@ -2755,23 +2740,21 @@ def billing_health():
         except Exception:
             result["stripe_connected"] = False
 
-    # ── Price IDs ─────────────────────────────────────────────────────────────
+    # ── Price / product ID ────────────────────────────────────────────────────
     if result["stripe_connected"]:
-        pro_pid = _PRICE_IDS.get("pro", "")
-        if pro_pid:
+        if _STRIPE_PRICE_ID:
             try:
-                _stripe.Price.retrieve(pro_pid)
-                result["pro_price_valid"] = True
+                _stripe.Price.retrieve(_STRIPE_PRICE_ID)
+                result["price_valid"] = True
             except Exception:
-                result["pro_price_valid"] = False
+                result["price_valid"] = False
 
-        ent_pid = _PRICE_IDS.get("enterprise", "")
-        if ent_pid:
+        if _STRIPE_PRODUCT_ID:
             try:
-                _stripe.Price.retrieve(ent_pid)
-                result["enterprise_price_valid"] = True
+                _stripe.Product.retrieve(_STRIPE_PRODUCT_ID)
+                result["product_valid"] = True
             except Exception:
-                result["enterprise_price_valid"] = False
+                result["product_valid"] = False
 
     # ── Supabase billing columns ──────────────────────────────────────────────
     supabase_url = os.environ.get("SUPABASE_URL")
@@ -2781,7 +2764,7 @@ def billing_health():
             headers = {"apikey": service_key, "Authorization": f"Bearer {service_key}"}
             r = _http.get(
                 f"{supabase_url}/rest/v1/profiles"
-                "?select=stripe_customer_id,subscription_id,plan,subscription_status,current_period_end"
+                "?select=stripe_customer_id,subscription_id,plan,subscription_status,current_period_end,last_webhook_event_id"
                 "&limit=0",
                 headers=headers,
                 timeout=10,

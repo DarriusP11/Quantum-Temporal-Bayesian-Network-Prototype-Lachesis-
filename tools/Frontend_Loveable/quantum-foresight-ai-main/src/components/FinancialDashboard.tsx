@@ -8,7 +8,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { apiFinancialAnalyze, FinancialAnalyzeResponse } from "@/lib/api";
 import { useAppContext } from "@/contexts/AppContext";
-import { useSubscription } from "@/hooks/useSubscription";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
   AreaChart, Area, Tooltip
@@ -226,7 +225,6 @@ function CorrelationMatrix({ returns, tickers }: { returns: Record<string, numbe
 
 export const FinancialDashboard = () => {
   const { state } = useAppContext();
-  const { subscription } = useSubscription();
 
   const [portfolioValue, setPortfolioValue] = useState(state.finance.portfolio_value);
   const [tickers, setTickers] = useState("SPY,QQQ,AAPL");
@@ -513,18 +511,11 @@ export const FinancialDashboard = () => {
                 <Checkbox
                   id="use-qae"
                   checked={useQAE}
-                  disabled={!subscription.is_pro && !subscription.is_enterprise}
-                  onCheckedChange={(checked) => {
-                    if (!subscription.is_pro && !subscription.is_enterprise) return;
-                    setUseQAE(!!checked);
-                  }}
+                  onCheckedChange={(checked) => setUseQAE(!!checked)}
                 />
-                <Label htmlFor="use-qae" className={`text-xs ${!subscription.is_pro && !subscription.is_enterprise ? "text-muted-foreground" : ""}`}>
+                <Label htmlFor="use-qae" className="text-xs">
                   Quantum Amplitude Estimation (QAE)
-                  {subscription.is_pro || subscription.is_enterprise
-                    ? <span className="text-muted-foreground ml-1">— requires qiskit-finance</span>
-                    : <Badge variant="outline" className="ml-1.5 text-xs border-primary/40 text-primary bg-primary/10">Pro</Badge>
-                  }
+                  <span className="text-muted-foreground ml-1">— requires qiskit-finance</span>
                 </Label>
               </div>
             </div>

@@ -11,10 +11,10 @@ import { useAuth } from "@/hooks/useAuth";
 
 // ── Subscription ─────────────────────────────────────────────────────────────
 import { useSubscription } from "@/hooks/useSubscription";
-import { LockedTabOverlay } from "@/components/LockedTabOverlay";
+import { SubscriptionGate } from "@/components/SubscriptionGate";
 import { SubscriptionBadge } from "@/components/SubscriptionBadge";
 import { PricingModal } from "@/components/PricingModal";
-import { post } from "@/lib/api";
+import { authPost } from "@/lib/api";
 import { FEATURES } from "@/lib/features";
 
 // ── Quantum tabs ─────────────────────────────────────────────────────────────
@@ -68,11 +68,6 @@ const TABS = [
   { value: "vqe",               label: "VQE",                icon: LineChart },
   { value: "quantum-hardware",  label: "Quantum Hardware",   icon: Cpu },
 ] as const;
-
-// ── Subscription gating ──────────────────────────────────────────────────────
-const DEV_BYPASS      = import.meta.env.DEV; // unlocks all tabs on localhost
-const PRO_TABS        = new Set(["qaoa", "vqe", "credit-risk"]);
-const ENTERPRISE_TABS = new Set(["quantum-hardware"]);
 
 // ── Classical tabs definition ─────────────────────────────────────────────────
 const CLASSICAL_TABS = [
@@ -132,21 +127,16 @@ function AppLayout() {
 
   // ── Subscription ────────────────────────────────────────────────────────
   const { subscription, refresh } = useSubscription();
-  const [pricingOpen, setPricingOpen]   = useState(false);
-  const [pricingTier, setPricingTier]   = useState<"pro" | "enterprise">("pro");
+  const [pricingOpen, setPricingOpen] = useState(false);
 
-  const openUpgrade = (tier: "pro" | "enterprise" = "pro") => {
-    setPricingTier(tier);
-    setPricingOpen(true);
-  };
+  const openUpgrade = () => setPricingOpen(true);
 
   const handleManage = async () => {
     try {
-      if (!user?.id) return;
-      const { url } = await post<{ url: string }>("/api/billing/portal-session", { user_id: user.id });
+      const { url } = await authPost<{ url: string }>("/api/billing/portal-session", {});
       window.open(url, "_blank");
     } catch {
-      openUpgrade(subscription.plan === "enterprise" ? "enterprise" : "pro");
+      openUpgrade();
     }
   };
 
@@ -156,7 +146,6 @@ function AppLayout() {
       open={pricingOpen}
       onClose={() => setPricingOpen(false)}
       onSuccess={refresh}
-      defaultTier={pricingTier}
     />
     <div className="flex h-screen overflow-hidden bg-background">
       {/* ── Left sidebar ─────────────────────────────────────────────────── */}
@@ -199,7 +188,7 @@ function AppLayout() {
               <SubscriptionBadge
                 plan={subscription.plan}
                 loading={subscription.loading}
-                onUpgrade={() => openUpgrade("pro")}
+                onUpgrade={openUpgrade}
                 onManage={handleManage}
               />
               <LanguageSelector />
@@ -240,27 +229,11 @@ function AppLayout() {
             <TabsContent value="foresight"      className="mt-0"><ForesightDashboard /></TabsContent>
             <TabsContent value="advanced"       className="mt-0"><AdvancedQuantumDashboard /></TabsContent>
             <TabsContent value="qtbn"           className="mt-0"><QTBNDashboard /></TabsContent>
-            <TabsContent value="qaoa" className="mt-0">
-              {DEV_BYPASS || subscription.is_pro || subscription.is_enterprise
-                ? <QAOADashboard />
-                : <LockedTabOverlay requiredPlan="pro" tabName="Toy QAOA" onUpgrade={() => openUpgrade("pro")} />}
-            </TabsContent>
-            <TabsContent value="credit-risk" className="mt-0">
-              {DEV_BYPASS || subscription.is_pro || subscription.is_enterprise
-                ? <CreditRiskDashboard />
-                : <LockedTabOverlay requiredPlan="pro" tabName="Credit Risk" onUpgrade={() => openUpgrade("pro")} />}
-            </TabsContent>
-            <TabsContent value="prompt-studio"  className="mt-0"><PromptStudioDashboard /></TabsContent>
-            <TabsContent value="vqe" className="mt-0">
-              {DEV_BYPASS || subscription.is_pro || subscription.is_enterprise
-                ? <VQEDashboard />
-                : <LockedTabOverlay requiredPlan="pro" tabName="VQE" onUpgrade={() => openUpgrade("pro")} />}
-            </TabsContent>
-            <TabsContent value="quantum-hardware" className="mt-0">
-              {DEV_BYPASS || subscription.is_enterprise
-                ? <QuantumHardwareTab />
-                : <LockedTabOverlay requiredPlan="enterprise" tabName="Quantum Hardware" onUpgrade={() => openUpgrade("enterprise")} />}
-            </TabsContent>
+            <TabsContent value="qaoa"            className="mt-0"><QAOADashboard /></TabsContent>
+            <TabsContent value="credit-risk"     className="mt-0"><CreditRiskDashboard /></TabsContent>
+            <TabsContent value="prompt-studio"   className="mt-0"><PromptStudioDashboard /></TabsContent>
+            <TabsContent value="vqe"             className="mt-0"><VQEDashboard /></TabsContent>
+            <TabsContent value="quantum-hardware" className="mt-0"><QuantumHardwareTab /></TabsContent>
             {isOwner && (
               <TabsContent value="admin"        className="mt-0"><AdminDashboard /></TabsContent>
             )}
@@ -285,51 +258,15 @@ function AppLayout() {
             </TabsList>
           </div>
           <div className="flex-1 overflow-y-auto px-6 py-6">
-            <TabsContent value="assistant" className="mt-0">
-              {DEV_BYPASS || subscription.is_basic || subscription.is_pro || subscription.is_enterprise
-                ? <LachesisAssistant />
-                : <LockedTabOverlay requiredPlan="basic" tabName="Lachesis AI" onUpgrade={() => openUpgrade("pro")} />}
-            </TabsContent>
-            <TabsContent value="finance" className="mt-0">
-              {DEV_BYPASS || subscription.is_basic || subscription.is_pro || subscription.is_enterprise
-                ? <FinancialDashboard />
-                : <LockedTabOverlay requiredPlan="basic" tabName="Financial Analytics" onUpgrade={() => openUpgrade("pro")} />}
-            </TabsContent>
-            <TabsContent value="insider" className="mt-0">
-              {DEV_BYPASS || subscription.is_basic || subscription.is_pro || subscription.is_enterprise
-                ? <InsiderTradingDashboard />
-                : <LockedTabOverlay requiredPlan="basic" tabName="Insider Trading" onUpgrade={() => openUpgrade("pro")} />}
-            </TabsContent>
-            <TabsContent value="sentiment" className="mt-0">
-              {DEV_BYPASS || subscription.is_basic || subscription.is_pro || subscription.is_enterprise
-                ? <SentimentDashboard />
-                : <LockedTabOverlay requiredPlan="basic" tabName="Sentiment Analysis" onUpgrade={() => openUpgrade("pro")} />}
-            </TabsContent>
-            <TabsContent value="budgeting" className="mt-0">
-              {DEV_BYPASS || subscription.is_basic || subscription.is_pro || subscription.is_enterprise
-                ? <BudgetingDashboard />
-                : <LockedTabOverlay requiredPlan="basic" tabName="Budgeting" onUpgrade={() => openUpgrade("pro")} />}
-            </TabsContent>
-            <TabsContent value="retirement" className="mt-0">
-              {DEV_BYPASS || subscription.is_basic || subscription.is_pro || subscription.is_enterprise
-                ? <RetirementDashboard />
-                : <LockedTabOverlay requiredPlan="basic" tabName="Retirement" onUpgrade={() => openUpgrade("pro")} />}
-            </TabsContent>
-            <TabsContent value="classical-credit" className="mt-0">
-              {DEV_BYPASS || subscription.is_basic || subscription.is_pro || subscription.is_enterprise
-                ? <ClassicalCreditRiskDashboard />
-                : <LockedTabOverlay requiredPlan="basic" tabName="Credit Risk" onUpgrade={() => openUpgrade("pro")} />}
-            </TabsContent>
-            <TabsContent value="home-planning" className="mt-0">
-              {DEV_BYPASS || subscription.is_basic || subscription.is_pro || subscription.is_enterprise
-                ? <HomePlanningDashboard />
-                : <LockedTabOverlay requiredPlan="basic" tabName="Home Planning" onUpgrade={() => openUpgrade("pro")} />}
-            </TabsContent>
-            <TabsContent value="debt-management" className="mt-0">
-              {DEV_BYPASS || subscription.is_basic || subscription.is_pro || subscription.is_enterprise
-                ? <DebtManagementDashboard />
-                : <LockedTabOverlay requiredPlan="basic" tabName="Debt Management" onUpgrade={() => openUpgrade("pro")} />}
-            </TabsContent>
+            <TabsContent value="assistant"        className="mt-0"><LachesisAssistant /></TabsContent>
+            <TabsContent value="finance"          className="mt-0"><FinancialDashboard /></TabsContent>
+            <TabsContent value="insider"          className="mt-0"><InsiderTradingDashboard /></TabsContent>
+            <TabsContent value="sentiment"        className="mt-0"><SentimentDashboard /></TabsContent>
+            <TabsContent value="budgeting"        className="mt-0"><BudgetingDashboard /></TabsContent>
+            <TabsContent value="retirement"       className="mt-0"><RetirementDashboard /></TabsContent>
+            <TabsContent value="classical-credit" className="mt-0"><ClassicalCreditRiskDashboard /></TabsContent>
+            <TabsContent value="home-planning"    className="mt-0"><HomePlanningDashboard /></TabsContent>
+            <TabsContent value="debt-management"  className="mt-0"><DebtManagementDashboard /></TabsContent>
           </div>
         </Tabs>
         )}
@@ -341,9 +278,11 @@ function AppLayout() {
 
 const Index = () => (
   <AuthGuard>
-    <AppProvider>
-      <AppLayout />
-    </AppProvider>
+    <SubscriptionGate>
+      <AppProvider>
+        <AppLayout />
+      </AppProvider>
+    </SubscriptionGate>
   </AuthGuard>
 );
 

@@ -1,46 +1,24 @@
-export type Plan = "free" | "basic" | "pro" | "enterprise";
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { authGet } from "@/lib/api";
+
+export type Plan = "free" | "premium";
 
 export interface SubscriptionState {
   plan: Plan;
   status: string;
   period_end: string | null;
-  is_basic: boolean;
-  is_pro: boolean;
-  is_enterprise: boolean;
+  is_subscribed: boolean;
   loading: boolean;
 }
 
-/* DEFAULT_STATE — used by real implementation below
 const DEFAULT_STATE: SubscriptionState = {
   plan: "free",
   status: "active",
   period_end: null,
-  is_basic: false,
-  is_pro: false,
-  is_enterprise: false,
+  is_subscribed: false,
   loading: true,
 };
-*/
-
-// TESTING BYPASS — remove this block and uncomment the real implementation below to re-enable paywall
-const BYPASS_STATE: SubscriptionState = {
-  plan: "enterprise",
-  status: "active",
-  period_end: null,
-  is_basic: true,
-  is_pro: true,
-  is_enterprise: true,
-  loading: false,
-};
-
-export function useSubscription() {
-  return { subscription: BYPASS_STATE, refresh: async () => {} };
-}
-
-/* REAL IMPLEMENTATION — uncomment to re-enable paywall (restore imports and DEFAULT_STATE too)
-import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { get } from "@/lib/api";
 
 export function useSubscription() {
   const { user } = useAuth();
@@ -52,9 +30,7 @@ export function useSubscription() {
       return;
     }
     try {
-      const data = await get<SubscriptionState>(
-        `/api/billing/subscription-status?user_id=${user.id}`
-      );
+      const data = await authGet<Omit<SubscriptionState, "loading">>("/api/billing/subscription-status");
       setSubscription({ ...data, loading: false });
     } catch {
       setSubscription({ ...DEFAULT_STATE, loading: false });
@@ -67,4 +43,3 @@ export function useSubscription() {
 
   return { subscription, refresh };
 }
-*/

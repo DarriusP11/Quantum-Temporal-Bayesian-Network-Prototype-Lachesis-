@@ -8,102 +8,58 @@ import {
 } from "@stripe/react-stripe-js";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Check, Zap, Crown, Star, Loader2 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { post } from "@/lib/api";
+import { Check, Loader2 } from "lucide-react";
+import { authPost } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ?? "");
 
-// ── Tier definitions ────────────────────────────────────────────────────────
+export const PRICE_LABEL = "$8.99";
 
-const TIERS = [
-  {
-    id:      "free",
-    label:   "Free",
-    icon:    Star,
-    price:   5,
-    priceId: null as string | null,
-    color:   "border-border",
-    badge:   "",
-    features: [
-      "Lachesis AI copilot",
-      "Financial Analytics (Monte Carlo)",
-      "Insider Trading + SEC EDGAR",
-      "Sentiment Analysis",
-      "Prompt Studio",
-      "Q-TBN regime forecasting",
-      "Foresight noise sweeps",
-      "Full quantum circuit simulator",
-      "Advanced Quantum diagnostics",
-    ],
-  },
-  {
-    id:      "pro",
-    label:   "Pro",
-    icon:    Zap,
-    price:   29.99,
-    priceId: import.meta.env.VITE_STRIPE_PRO_MONTHLY_PRICE_ID ?? "",
-    color:   "border-primary/60 shadow-[0_0_0_1px_hsl(var(--primary)/0.3)]",
-    badge:   "Most Popular",
-    features: [
-      "Everything in Free",
-      "Toy QAOA portfolio optimization",
-      "VQE Risk Gate + Hamiltonian solver",
-      "Quantum Amplitude Estimation (QAE) for VaR",
-      "Priority support",
-    ],
-  },
-  {
-    id:      "enterprise",
-    label:   "Enterprise",
-    icon:    Crown,
-    price:   99.99,
-    priceId: import.meta.env.VITE_STRIPE_ENTERPRISE_MONTHLY_PRICE_ID ?? "",
-    color:   "border-amber-500/60 shadow-[0_0_0_1px_hsl(40_90%_50%/0.3)]",
-    badge:   "Coming: Real Hardware",
-    features: [
-      "Everything in Pro",
-      "Real Quantum Hardware access (coming soon)",
-      "IBM Quantum + Google Quantum AI",
-      "Hardware-native transpilation",
-      "Dedicated support + SLA",
-    ],
-  },
+const FEATURES = [
+  "Lachesis AI copilot",
+  "Budgeting, Retirement & Debt planning tools",
+  "Credit Behavior Simulator",
+  "Home Planning cost simulator",
+  "Financial Analytics (Monte Carlo)",
+  "Insider Trading + SEC EDGAR",
+  "Sentiment Analysis",
 ];
 
-// ── Card form inside Elements context ───────────────────────────────────────
+// ── Card form inside Elements context — shared by PricingModal and the
+// blocking SubscriptionGate so the Stripe Elements logic lives in one place ──
 
-function CheckoutForm({
-  priceId,
+export function CheckoutForm({
   onSuccess,
   onCancel,
+  submitLabel = "Subscribe Now",
 }: {
-  priceId: string;
   onSuccess: () => void;
-  onCancel: () => void;
+  onCancel?: () => void;
+  submitLabel?: string;
 }) {
   const stripe   = useStripe();
   const elements = useElements();
-  const { user } = useAuth();
+  const { user }  = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stripe || !elements || !user) return;
+    if (!stripe || !elements) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      // 1. Create SetupIntent to collect card
-      const { client_secret, customer_id } = await post<{ client_secret: string; customer_id: string }>(
+      // 1. Create SetupIntent to collect card. The backend derives *who* from
+      // the auth token; email is passed along for the Stripe Customer record.
+      const { client_secret } = await authPost<{ client_secret: string }>(
         "/api/billing/create-setup-intent",
-        { user_id: user.id, email: user.email }
+        { email: user?.email ?? "" }
       );
 
       // 2. Confirm card setup (3D Secure handled by Stripe if needed)
@@ -119,14 +75,10 @@ function CheckoutForm({
         ? setupIntent.payment_method
         : setupIntent.payment_method?.id ?? "";
 
-      // 3. Create subscription with the confirmed payment method
-      await post("/api/billing/create-subscription", {
-        user_id:           user.id,
-        price_id:          priceId,
-        payment_method_id: paymentMethodId,
-      });
+      // 3. Create the subscription — the server always uses its one configured price
+      await authPost("/api/billing/create-subscription", { payment_method_id: paymentMethodId });
 
-      toast({ title: "Subscription activated!", description: "Your plan has been upgraded. Enjoy!" });
+      toast({ title: "Subscription activated!", description: "You're all set — welcome to Lachesis." });
       onSuccess();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Payment failed. Please try again.";
@@ -161,11 +113,13 @@ function CheckoutForm({
       <div className="flex gap-2">
         <Button type="submit" disabled={!stripe || loading} className="flex-1 gap-2">
           {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-          {loading ? "Processing…" : "Subscribe Now"}
+          {loading ? "Processing…" : submitLabel}
         </Button>
-        <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
-          Cancel
-        </Button>
+        {onCancel && (
+          <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
+            Cancel
+          </Button>
+        )}
       </div>
 
       <p className="text-xs text-muted-foreground text-center">
@@ -175,123 +129,60 @@ function CheckoutForm({
   );
 }
 
-// ── Main modal ───────────────────────────────────────────────────────────────
+// ── Feature list card, shared visual between the modal and the blocking gate ─
 
-interface PricingModalProps {
-  open:     boolean;
-  onClose:  () => void;
-  onSuccess: () => void;
-  /** Pre-select the tier to highlight */
-  defaultTier?: "pro" | "enterprise";
+export function PlanFeatureList() {
+  return (
+    <ul className="space-y-1.5">
+      {FEATURES.map((f) => (
+        <li key={f} className="flex items-start gap-2 text-xs text-muted-foreground">
+          <Check className="w-3.5 h-3.5 text-green-400 mt-0.5 shrink-0" />
+          {f}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
-export function PricingModal({ open, onClose, onSuccess, defaultTier = "pro" }: PricingModalProps) {
-  const [selectedTier, setSelectedTier] = useState<string | null>(null);
+// ── Main modal (re-subscribe / manage flow for existing users) ───────────────
+
+interface PricingModalProps {
+  open:      boolean;
+  onClose:   () => void;
+  onSuccess: () => void;
+}
+
+export function PricingModal({ open, onClose, onSuccess }: PricingModalProps) {
+  const [showForm, setShowForm] = useState(false);
 
   const handleSuccess = () => {
-    setSelectedTier(null);
+    setShowForm(false);
     onSuccess();
     onClose();
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { setShowForm(false); onClose(); } }}>
+      <DialogContent className="max-w-md w-full">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-center">
-            Choose your Lachesis plan
-          </DialogTitle>
+          <DialogTitle className="text-xl font-bold text-center">Lachesis Premium</DialogTitle>
           <p className="text-sm text-muted-foreground text-center">Billed monthly · Cancel anytime</p>
         </DialogHeader>
 
-        {/* Tier cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-          {TIERS.map((tier) => {
-            const Icon          = tier.icon;
-            const isHighlighted = tier.id === defaultTier && !selectedTier;
-            const isSelected    = selectedTier === tier.id;
-
-            return (
-              <div
-                key={tier.id}
-                className={`relative rounded-xl border p-5 flex flex-col gap-4 transition-all
-                  ${tier.color}
-                  ${isHighlighted ? "ring-2 ring-primary/50" : ""}
-                  ${isSelected    ? "ring-2 ring-primary"    : ""}
-                `}
-              >
-                {tier.badge && (
-                  <Badge className={`absolute -top-2.5 left-1/2 -translate-x-1/2 text-xs px-2 ${
-                    tier.id === "enterprise"
-                      ? "bg-amber-500 text-white"
-                      : "bg-primary text-primary-foreground"
-                  }`}>
-                    {tier.badge}
-                  </Badge>
-                )}
-
-                <div className="flex items-center gap-2">
-                  <Icon className={`w-5 h-5 ${
-                    tier.id === "enterprise" ? "text-amber-400"
-                    : tier.id === "pro"      ? "text-primary"
-                    : "text-muted-foreground"
-                  }`} />
-                  <span className="font-semibold">{tier.label}</span>
-                </div>
-
-                <div>
-                  {tier.price === 0 ? (
-                    <span className="text-2xl font-bold">Free</span>
-                  ) : (
-                    <>
-                      <span className="text-2xl font-bold">${tier.price.toFixed(2)}</span>
-                      <span className="text-sm text-muted-foreground">/mo</span>
-                    </>
-                  )}
-                </div>
-
-                <ul className="space-y-1.5 flex-1">
-                  {tier.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-xs text-muted-foreground">
-                      <Check className="w-3.5 h-3.5 text-green-400 mt-0.5 shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-
-                {tier.id !== "free" && (
-                  <Button
-                    size="sm"
-                    variant={isSelected ? "default" : "outline"}
-                    className={`w-full mt-2 ${
-                      tier.id === "enterprise" && !isSelected
-                        ? "border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
-                        : ""
-                    }`}
-                    onClick={() => setSelectedTier(isSelected ? null : tier.id)}
-                  >
-                    {isSelected ? "Hide form" : `Get ${tier.label}`}
-                  </Button>
-                )}
-
-                {/* Inline checkout form */}
-                {isSelected && tier.priceId && (
-                  <Elements stripe={stripePromise}>
-                    <CheckoutForm
-                      priceId={tier.priceId}
-                      onSuccess={handleSuccess}
-                      onCancel={() => setSelectedTier(null)}
-                    />
-                  </Elements>
-                )}
-              </div>
-            );
-          })}
+        <div className="text-center py-2">
+          <span className="text-3xl font-bold">{PRICE_LABEL}</span>
+          <span className="text-sm text-muted-foreground">/mo</span>
         </div>
 
-        <p className="text-xs text-muted-foreground text-center pt-2">
-          All plans include a secure Stripe checkout. Upgrade or cancel anytime from your billing portal.
-        </p>
+        <PlanFeatureList />
+
+        {!showForm ? (
+          <Button className="w-full mt-2" onClick={() => setShowForm(true)}>Subscribe</Button>
+        ) : (
+          <Elements stripe={stripePromise}>
+            <CheckoutForm onSuccess={handleSuccess} onCancel={() => setShowForm(false)} />
+          </Elements>
+        )}
       </DialogContent>
     </Dialog>
   );
