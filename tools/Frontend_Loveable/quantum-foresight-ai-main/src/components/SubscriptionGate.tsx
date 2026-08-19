@@ -23,7 +23,7 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
   const { user } = useAuth();
   const { subscription, refresh } = useSubscription();
 
-  if (DEV_BYPASS || user?.email === OWNER_EMAIL) {
+  if (DEV_BYPASS || user?.email?.toLowerCase() === OWNER_EMAIL) {
     return <>{children}</>;
   }
 
