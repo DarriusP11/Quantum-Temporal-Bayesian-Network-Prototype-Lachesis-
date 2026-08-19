@@ -3,12 +3,14 @@
  * All calls go to the FastAPI server at VITE_API_URL (default: http://localhost:8000)
  */
 
+import { supabase } from "@/integrations/supabase/client";
+
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
     ...options,
+    headers: { "Content-Type": "application/json", ...(options?.headers as Record<string, string> | undefined) },
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
@@ -23,6 +25,24 @@ export function post<T>(path: string, body: unknown): Promise<T> {
 
 export function get<T>(path: string): Promise<T> {
   return request<T>(path, { method: "GET" });
+}
+
+// ─── Auth-aware request helpers (attaches the caller's Supabase session token) ─
+// Use these for any endpoint that requires Depends(_get_authenticated_user_id)
+// on the backend — currently: Budgeting, Retirement, Credit Behavior Simulator.
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+export async function authGet<T>(path: string): Promise<T> {
+  return request<T>(path, { method: "GET", headers: await authHeaders() });
+}
+
+export async function authPost<T>(path: string, body: unknown): Promise<T> {
+  return request<T>(path, { method: "POST", headers: await authHeaders(), body: JSON.stringify(body) });
 }
 
 // ─── Auth (admin signup via backend) ─────────────────────────────────────────
@@ -657,3 +677,384 @@ export const apiCreditRiskPresets = () =>
 
 export const apiCreditRiskAnalyze = (req: CreditRiskRequest) =>
   post<CreditRiskResponse>("/api/credit-risk/analyze", req);
+
+// ─── Budgeting ─────────────────────────────────────────────────────────────
+// Authenticated, Supabase-persisted (one budget per user, upserted).
+
+export interface BudgetItem {
+  id: string;
+  name: string;
+  amount: number;
+}
+
+export interface BudgetCategory {
+  id: string;
+  emoji: string;
+  label: string;
+  items: BudgetItem[];
+}
+
+export interface SaveBudgetRequest {
+  income: number;
+  categories: BudgetCategory[];
+}
+
+export interface BudgetPlanResponse {
+  user_id: string;
+  income: number;
+  categories: BudgetCategory[];
+  category_totals: Record<string, number>;
+  total_spend: number;
+  surplus: number;
+  needs_pct: number;
+  wants_pct: number;
+  savings_pct: number;
+  targets: { needs: number; wants: number; savings: number };
+  verdicts: { needs: "over" | "under" | "on_track"; wants: "over" | "under" | "on_track"; savings: "over" | "under" | "on_track" };
+}
+
+export const apiBudgetingGet = () => authGet<BudgetPlanResponse>("/api/budgeting/plan");
+export const apiBudgetingSave = (req: SaveBudgetRequest) =>
+  authPost<BudgetPlanResponse>("/api/budgeting/plan", req);
+
+// ─── Retirement ──────────────────────────────────────────────────────────────
+// Authenticated, Supabase-persisted (one plan per user, upserted). Phase 1
+// scope: fixed-rate compounding growth. Phase 4 adds withdrawal/decumulation
+// risk analysis (tax brackets, Roth/Traditional split, Monte Carlo over real
+// historical S&P 500 sequences) via a separate stateless `risk-analysis` call.
+
+export interface SaveRetirementPlanRequest {
+  plan_name?: string;
+  current_age: number;
+  retirement_age: number;
+  current_savings: number;
+  monthly_contribution: number;
+  expected_return_rate: number;
+  inflation_rate?: number;
+  retirement_goal?: string;
+  roth_pct?: number;
+  life_expectancy?: number;
+  withdrawal_rate_pct?: number;
+}
+
+export interface RetirementSeriesPoint {
+  age: number;
+  balance: number;
+}
+
+export interface RetirementPlanResponse {
+  user_id: string;
+  plan_name: string;
+  current_age: number;
+  retirement_age: number;
+  current_savings: number;
+  monthly_contribution: number;
+  expected_return_rate: number;
+  inflation_rate: number;
+  retirement_goal: string;
+  roth_pct: number;
+  life_expectancy: number;
+  withdrawal_rate_pct: number;
+  series: RetirementSeriesPoint[];
+  late_start_series: RetirementSeriesPoint[];
+  late_start_age: number;
+  years: number;
+  projected_balance: number;
+  late_start_balance: number;
+  total_contributed: number;
+  total_growth: number;
+  growth_multiple: number | null;
+}
+
+export const apiRetirementGet = () => authGet<RetirementPlanResponse>("/api/retirement/plan");
+export const apiRetirementSave = (req: SaveRetirementPlanRequest) =>
+  authPost<RetirementPlanResponse>("/api/retirement/plan", req);
+
+// ─── Retirement Risk Analysis (Phase 4) ───────────────────────────────────────
+// Stateless — a Monte Carlo block-bootstrap over real historical S&P 500 (SPY)
+// annual returns, simplified 2024 federal-single-filer tax brackets on the
+// Traditional portion of each year's withdrawal. Educational only.
+
+export interface RetirementRiskAnalysisRequest {
+  starting_balance: number;
+  roth_pct?: number;
+  withdrawal_rate_pct?: number;
+  inflation_rate_pct?: number;
+  horizon_years?: number;
+  n_simulations?: number;
+}
+
+export interface RetirementPercentileTimelinePoint {
+  year: number;
+  p10: number;
+  median: number;
+  p90: number;
+}
+
+export interface RetirementRiskAnalysisResponse {
+  success_rate_pct: number;
+  median_ending_balance: number;
+  worst_case_ending_balance: number;
+  best_case_ending_balance: number;
+  median_lifetime_taxes_paid: number;
+  percentile_timeline: RetirementPercentileTimelinePoint[];
+  n_simulations: number;
+  data_source: string;
+  initial_annual_withdrawal: number;
+  initial_taxable_withdrawal: number;
+  initial_tax_free_withdrawal: number;
+  initial_year_tax: number;
+}
+
+export const apiRetirementRiskAnalysis = (req: RetirementRiskAnalysisRequest) =>
+  authPost<RetirementRiskAnalysisResponse>("/api/retirement/risk-analysis", req);
+
+// ─── Credit Behavior Simulator ───────────────────────────────────────────────
+// Authenticated. `simulate` is stateless (no persistence); `profile` GET/POST
+// saves a named scenario + its last result for next visit. Educational only —
+// not a real credit-bureau scoring algorithm (see `disclaimer` in the response).
+
+export type CreditSimPaymentBehavior = "on_time" | "minimum_only" | "missed";
+
+export interface CreditSimMonth {
+  payment_behavior: CreditSimPaymentBehavior;
+  utilization_pct: number;
+  new_account_opened?: boolean;
+}
+
+export interface CreditSimRequest {
+  starting_fico: number;
+  monthly_income: number;
+  monthly_debt: number;
+  months: CreditSimMonth[];
+}
+
+export interface CreditSimTrajectoryPoint {
+  month: number;
+  score: number;
+  factor_breakdown: Record<string, number>;
+}
+
+export interface CreditSimResponse {
+  trajectory: CreditSimTrajectoryPoint[];
+  starting_fico: number;
+  ending_fico: number;
+  dti: number | null;
+  disclaimer: string;
+  tips: string[];
+}
+
+export const apiCreditSimSimulate = (req: CreditSimRequest) =>
+  authPost<CreditSimResponse>("/api/credit-sim/simulate", req);
+
+export interface SaveCreditSimProfileRequest {
+  starting_fico: number;
+  monthly_income: number;
+  monthly_debt: number;
+  behavior_assumptions: Record<string, unknown>;
+  last_trajectory?: CreditSimResponse | null;
+}
+
+export interface CreditSimProfileResponse {
+  user_id: string;
+  starting_fico: number;
+  monthly_income: number;
+  monthly_debt: number;
+  behavior_assumptions: Record<string, unknown>;
+  last_trajectory: CreditSimResponse | null;
+}
+
+export const apiCreditSimGetProfile = () => authGet<CreditSimProfileResponse>("/api/credit-sim/profile");
+export const apiCreditSimSaveProfile = (req: SaveCreditSimProfileRequest) =>
+  authPost<CreditSimProfileResponse>("/api/credit-sim/profile", req);
+
+// ─── Home Planning ────────────────────────────────────────────────────────────
+// Authenticated. `simulate` is stateless; `plan` GET/POST saves a single
+// current plan per user (option_a/option_b + shared utilities), matching the
+// Budgeting/Retirement upsert-one-row pattern.
+
+export type HomePlanningType = "home" | "apartment" | "dorm" | "mobile_home";
+
+export interface HomeBuyInputs {
+  purchase_price: number;
+  down_payment_pct?: number;
+  mortgage_rate_pct?: number;
+  term_years?: number;
+  property_tax_rate_pct?: number;
+  annual_insurance?: number;
+  hoa_monthly?: number;
+  closing_costs_pct?: number;
+}
+
+export interface ApartmentInputs {
+  monthly_rent: number;
+  deposit_multiplier?: number;
+  renters_insurance_monthly?: number;
+}
+
+export interface DormInputs {
+  cost_per_semester: number;
+  semesters_per_year?: number;
+  meal_plan_included?: boolean;
+}
+
+export interface MobileHomeInputs {
+  purchase_price: number;
+  down_payment_pct?: number;
+  loan_rate_pct?: number;
+  term_years?: number;
+  lot_rent_monthly?: number;
+  annual_insurance?: number;
+}
+
+export interface HomePlanningOption {
+  type: HomePlanningType;
+  inputs: HomeBuyInputs | ApartmentInputs | DormInputs | MobileHomeInputs | Record<string, unknown>;
+}
+
+export interface HomePlanningEvaluation {
+  type: HomePlanningType;
+  monthly_total: number;
+  upfront_cost: number;
+  utilities_total: number;
+  grand_total_monthly: number;
+  [key: string]: unknown;
+}
+
+export interface HomePlanningTimelinePoint {
+  year: number;
+  cumulative_buy_spend: number;
+  cumulative_rent_spend: number;
+  home_value: number;
+  net_buy_cost: number;
+  net_rent_cost: number;
+}
+
+export interface HomePlanningComparison {
+  timeline: HomePlanningTimelinePoint[];
+  breakeven_year: number | null;
+  upfront_comparison: { buy: number; rent: number };
+  monthly_comparison: { buy: number; rent: number };
+}
+
+export interface HomePlanningSimulateRequest {
+  option_a?: HomePlanningOption | null;
+  option_b?: HomePlanningOption | null;
+  utilities?: Record<string, number>;
+  horizon_years?: number;
+  appreciation_rate_pct?: number;
+  selling_cost_pct?: number;
+}
+
+export interface HomePlanningSimulateResponse {
+  option_a?: HomePlanningEvaluation;
+  option_b?: HomePlanningEvaluation;
+  comparison?: HomePlanningComparison;
+  utilities_used: Record<string, number>;
+}
+
+export interface HomePlanningUtilityDefault {
+  label: string;
+  default_monthly: number;
+}
+
+export const apiHomePlanningDefaults = () =>
+  get<{ utilities: Record<string, HomePlanningUtilityDefault> }>("/api/home-planning/defaults");
+
+export const apiHomePlanningSimulate = (req: HomePlanningSimulateRequest) =>
+  authPost<HomePlanningSimulateResponse>("/api/home-planning/simulate", req);
+
+export interface SaveHomePlanRequest {
+  option_a?: HomePlanningOption | null;
+  option_b?: HomePlanningOption | null;
+  utilities?: Record<string, number>;
+  comparison_settings?: Record<string, unknown>;
+}
+
+export interface HomePlanResponse {
+  user_id: string;
+  option_a: HomePlanningOption | null;
+  option_b: HomePlanningOption | null;
+  utilities: Record<string, number>;
+  comparison_settings: Record<string, unknown>;
+}
+
+export const apiHomePlanningGet = () => authGet<HomePlanResponse>("/api/home-planning/plan");
+export const apiHomePlanningSave = (req: SaveHomePlanRequest) =>
+  authPost<HomePlanResponse>("/api/home-planning/plan", req);
+
+// ─── Debt Management ──────────────────────────────────────────────────────────
+// Authenticated (except the minimum-payment hint, a stateless calc helper).
+// `simulate` is stateless; `plan` GET/POST saves a single current plan per
+// user (the full debt list + extra monthly payment budget).
+
+export type DebtType = "student_loan" | "credit_card" | "personal_loan" | "business_loan";
+export type DebtStrategy = "minimum_only" | "snowball" | "avalanche";
+
+export interface DebtEntry {
+  id: string;
+  name: string;
+  type: DebtType;
+  balance: number;
+  apr_pct: number;
+  minimum_payment: number;
+}
+
+export interface DebtPlanSimulateRequest {
+  debts: DebtEntry[];
+  extra_monthly_payment?: number;
+}
+
+export interface DebtTimelinePoint {
+  month: number;
+  total_remaining_balance: number;
+}
+
+export interface DebtPayoffOrderEntry {
+  id: string;
+  payoff_month: number | null;
+}
+
+export interface DebtStrategyResult {
+  strategy: DebtStrategy;
+  months_to_debt_free: number | null;
+  total_interest_paid: number;
+  payoff_order: DebtPayoffOrderEntry[];
+  timeline: DebtTimelinePoint[];
+  hit_cap: boolean;
+}
+
+export interface DebtStrategySavings {
+  interest_saved: number;
+  months_saved: number | null;
+}
+
+export interface DebtPlanSimulateResponse {
+  strategies: Record<DebtStrategy, DebtStrategyResult>;
+  summary: {
+    snowball_vs_minimum: DebtStrategySavings;
+    avalanche_vs_minimum: DebtStrategySavings;
+    avalanche_vs_snowball: DebtStrategySavings;
+  };
+}
+
+export const apiDebtManagementSimulate = (req: DebtPlanSimulateRequest) =>
+  authPost<DebtPlanSimulateResponse>("/api/debt-management/simulate", req);
+
+export const apiDebtManagementMinimumPaymentHint = (type: DebtType, balance: number, apr_pct: number) =>
+  post<{ minimum_payment_hint: number }>("/api/debt-management/minimum-payment-hint", { type, balance, apr_pct });
+
+export interface SaveDebtPlanRequest {
+  debts: DebtEntry[];
+  extra_monthly_payment?: number;
+}
+
+export interface DebtPlanResponse {
+  user_id: string;
+  debts: DebtEntry[];
+  extra_monthly_payment: number;
+}
+
+export const apiDebtManagementGet = () => authGet<DebtPlanResponse>("/api/debt-management/plan");
+export const apiDebtManagementSave = (req: SaveDebtPlanRequest) =>
+  authPost<DebtPlanResponse>("/api/debt-management/plan", req);

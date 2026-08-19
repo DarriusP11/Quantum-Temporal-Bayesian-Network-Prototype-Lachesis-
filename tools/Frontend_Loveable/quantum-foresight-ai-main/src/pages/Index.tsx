@@ -15,6 +15,7 @@ import { LockedTabOverlay } from "@/components/LockedTabOverlay";
 import { SubscriptionBadge } from "@/components/SubscriptionBadge";
 import { PricingModal } from "@/components/PricingModal";
 import { post } from "@/lib/api";
+import { FEATURES } from "@/lib/features";
 
 // ── Quantum tabs ─────────────────────────────────────────────────────────────
 import { CircuitInspectorDashboard } from "@/components/CircuitInspectorDashboard";
@@ -41,13 +42,15 @@ import { QuantumHardwareTab }        from "@/components/QuantumHardwareTab";
 import {
   Atom, Layers, Shield, BookOpen, BarChart2,
   TrendingUp, TrendingDown, Briefcase, Sparkles, Brain, Zap, Newspaper,
-  Wand2, Gauge, KeyRound, Thermometer, LineChart, Cpu, Wallet, PiggyBank, ShieldCheck,
+  Wand2, Gauge, KeyRound, Thermometer, LineChart, Cpu, Wallet, PiggyBank, ShieldCheck, Home, CreditCard,
 } from "lucide-react";
 
 // ── Classical tabs ────────────────────────────────────────────────────────────
 import { BudgetingDashboard }           from "@/components/BudgetingDashboard";
 import { RetirementDashboard }          from "@/components/RetirementDashboard";
 import { ClassicalCreditRiskDashboard } from "@/components/ClassicalCreditRiskDashboard";
+import { HomePlanningDashboard }        from "@/components/HomePlanningDashboard";
+import { DebtManagementDashboard }      from "@/components/DebtManagementDashboard";
 
 const OWNER_EMAIL = "darriusperson@gmail.com";
 
@@ -78,6 +81,8 @@ const CLASSICAL_TABS = [
   { value: "budgeting",        label: "Budgeting",           icon: Wallet },
   { value: "retirement",       label: "Retirement",          icon: PiggyBank },
   { value: "classical-credit", label: "Credit Risk",         icon: ShieldCheck },
+  { value: "home-planning",    label: "Home Planning",       icon: Home },
+  { value: "debt-management",  label: "Debt Management",     icon: CreditCard },
   { value: "insider",          label: "Insider Trading",     icon: Briefcase },
   { value: "sentiment",        label: "Sentiment Analysis",  icon: Newspaper },
 ] as const;
@@ -163,7 +168,7 @@ function AppLayout() {
         <div className="border-b border-border/40 bg-card/80 backdrop-blur px-6 py-3 shrink-0">
           <div className="flex items-center gap-3">
             <div className="relative">
-              <Atom className="w-8 h-8 text-primary animate-pulse" />
+              <img src="/apple-touch-icon.png" alt="Lachesis" className="w-8 h-8 object-contain animate-pulse" />
               <div className="absolute inset-0 w-8 h-8 border-2 border-primary/30 rounded-full animate-ping" />
             </div>
             <div>
@@ -171,15 +176,12 @@ function AppLayout() {
                 Lachesis
               </h1>
               <p className="text-xs text-muted-foreground hidden sm:block">
-                Quantum-Enhanced Financial Analytics &amp; Foresight Platform
+                Your AI Financial Literacy Tutor
               </p>
             </div>
             <div className="ml-auto flex gap-2 items-center">
               <Badge variant="outline" className="border-primary/30 bg-primary/10 text-xs hidden lg:flex">
                 <Brain className="w-3 h-3 mr-1" />AI-Powered
-              </Badge>
-              <Badge variant="outline" className="border-accent/30 bg-accent/10 text-xs hidden lg:flex">
-                <Atom className="w-3 h-3 mr-1" />Quantum-Ready
               </Badge>
               {isOwner && (
                 <Badge className="bg-primary/20 text-primary border-primary/30 text-xs">Owner</Badge>
@@ -317,6 +319,16 @@ function AppLayout() {
               {DEV_BYPASS || subscription.is_basic || subscription.is_pro || subscription.is_enterprise
                 ? <ClassicalCreditRiskDashboard />
                 : <LockedTabOverlay requiredPlan="basic" tabName="Credit Risk" onUpgrade={() => openUpgrade("pro")} />}
+            </TabsContent>
+            <TabsContent value="home-planning" className="mt-0">
+              {DEV_BYPASS || subscription.is_basic || subscription.is_pro || subscription.is_enterprise
+                ? <HomePlanningDashboard />
+                : <LockedTabOverlay requiredPlan="basic" tabName="Home Planning" onUpgrade={() => openUpgrade("pro")} />}
+            </TabsContent>
+            <TabsContent value="debt-management" className="mt-0">
+              {DEV_BYPASS || subscription.is_basic || subscription.is_pro || subscription.is_enterprise
+                ? <DebtManagementDashboard />
+                : <LockedTabOverlay requiredPlan="basic" tabName="Debt Management" onUpgrade={() => openUpgrade("pro")} />}
             </TabsContent>
           </div>
         </Tabs>

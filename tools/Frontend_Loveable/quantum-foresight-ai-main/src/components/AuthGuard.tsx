@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2, Atom } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -22,7 +22,7 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="relative">
-            <Atom className="w-12 h-12 text-primary animate-pulse mx-auto" />
+            <img src="/apple-touch-icon.png" alt="Lachesis" className="w-12 h-12 object-contain animate-pulse mx-auto" />
             <div className="absolute inset-0 w-12 h-12 border-2 border-primary/30 rounded-full animate-ping"></div>
           </div>
           <div className="space-y-2">

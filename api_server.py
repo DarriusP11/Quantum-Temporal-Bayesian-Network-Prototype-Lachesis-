@@ -25,9 +25,10 @@ if _env_path.exists():
             os.environ.setdefault(_k.strip(), _v.strip())
 
 import numpy as np
+import requests
 
 # ── FastAPI ──────────────────────────────────────────────────────────────────
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -53,6 +54,10 @@ def health():
 # OPTIONAL IMPORTS (graceful fallback if a dependency is missing)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+# Master switch — set QUANTUM_FEATURES_ENABLED=false in the environment to disable
+# all quantum-backed capabilities without deleting any code (reversible, additive).
+QUANTUM_FEATURES_ENABLED = os.environ.get("QUANTUM_FEATURES_ENABLED", "true").lower() != "false"
+
 try:
     import pandas as pd
     _HAS_PANDAS = True
@@ -74,6 +79,7 @@ try:
     _HAS_QISKIT = True
 except Exception:
     _HAS_QISKIT = False
+_HAS_QISKIT = _HAS_QISKIT and QUANTUM_FEATURES_ENABLED
 
 # ── IBM Quantum Runtime optional imports ─────────────────────────────────────
 try:
@@ -81,6 +87,7 @@ try:
     _HAS_IBM = True
 except Exception:
     _HAS_IBM = False
+_HAS_IBM = _HAS_IBM and QUANTUM_FEATURES_ENABLED
 
 # ── QAE optional imports (qiskit-finance) ────────────────────────────────────
 _HAS_QAE = False
@@ -103,12 +110,15 @@ try:
     _HAS_QAE = True
 except Exception:
     pass
+_HAS_QAE = _HAS_QAE and QUANTUM_FEATURES_ENABLED
 
 try:
     from qtbn_core import QTBNConfig, QTBNEngine
     _HAS_QTBN_CORE = True
 except ImportError:
     _HAS_QTBN_CORE = False
+# NOTE: QTBN core is a classical Markov-chain engine (no qiskit) — intentionally
+# NOT gated by QUANTUM_FEATURES_ENABLED.
 
 try:
     from qaoa_scenario1 import (
@@ -131,6 +141,7 @@ try:
 except Exception as _qaoa_err:
     _HAS_QAOA = False
     _qaoa_err_msg = str(_qaoa_err)
+_HAS_QAOA = _HAS_QAOA and QUANTUM_FEATURES_ENABLED
 
 try:
     from vqe_tab import (
@@ -145,18 +156,77 @@ try:
     _HAS_VQE = True
 except Exception:
     _HAS_VQE = False
+_HAS_VQE = _HAS_VQE and QUANTUM_FEATURES_ENABLED
 
 try:
     from foresight import SweepSpec, aggregate_counts, kl_div, blend
     _HAS_FORESIGHT = True
 except Exception:
     _HAS_FORESIGHT = False
+_HAS_FORESIGHT = _HAS_FORESIGHT and QUANTUM_FEATURES_ENABLED
 
 try:
     from credit_risk import run_credit_risk_analysis, PRESET_BORROWERS
     _HAS_CREDIT_RISK = True
 except Exception:
     _HAS_CREDIT_RISK = False
+_HAS_CREDIT_RISK = _HAS_CREDIT_RISK and QUANTUM_FEATURES_ENABLED
+
+# ── New classical financial-literacy modules (budgeting / retirement / credit
+# behavior simulator) — NOT quantum, NOT gated by QUANTUM_FEATURES_ENABLED.
+try:
+    from budgeting import (
+        DEFAULT_CATEGORIES as BUDGETING_DEFAULT_CATEGORIES,
+        compute_budget_summary,
+        get_or_create_budget,
+        save_budget,
+    )
+    _HAS_BUDGETING = True
+except Exception:
+    _HAS_BUDGETING = False
+
+try:
+    from retirement import (
+        compute_growth,
+        get_or_create_plan as get_or_create_retirement_plan,
+        save_plan as save_retirement_plan,
+        run_retirement_risk_analysis,
+    )
+    _HAS_RETIREMENT = True
+except Exception:
+    _HAS_RETIREMENT = False
+
+try:
+    from credit_behavior_sim import (
+        run_simulation as run_credit_behavior_simulation,
+        get_or_create_profile as get_or_create_credit_sim_profile,
+        save_profile as save_credit_sim_profile,
+    )
+    _HAS_CREDIT_BEHAVIOR_SIM = True
+except Exception:
+    _HAS_CREDIT_BEHAVIOR_SIM = False
+
+try:
+    from home_planning import (
+        DEFAULT_UTILITIES as HOME_PLANNING_DEFAULT_UTILITIES,
+        run_simulation as run_home_planning_simulation,
+        get_or_create_plan as get_or_create_home_plan,
+        save_plan as save_home_plan,
+    )
+    _HAS_HOME_PLANNING = True
+except Exception:
+    _HAS_HOME_PLANNING = False
+
+try:
+    from debt_management import (
+        compute_minimum_payment_hint,
+        compare_strategies as compare_debt_strategies,
+        get_or_create_plan as get_or_create_debt_plan,
+        save_plan as save_debt_plan,
+    )
+    _HAS_DEBT_MANAGEMENT = True
+except Exception:
+    _HAS_DEBT_MANAGEMENT = False
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # HELPERS
@@ -191,6 +261,66 @@ def _log_return_frame(prices_df) -> "pd.DataFrame":
     return np.log(prices_df / prices_df.shift(1)).dropna()
 
 
+# ── Auth: verify the caller's Supabase session token and resolve a real user id ──
+# Unlike the legacy `_get_profile`/billing helpers (which trust a client-supplied
+# user_id and are out of scope here), every NEW financial-data route below must
+# resolve user_id from a verified bearer token — never from the request body.
+
+def _get_authenticated_user_id(authorization: str = Header(None)) -> str:
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(401, "Missing or invalid Authorization header")
+    token = authorization.split(" ", 1)[1]
+    supabase_url = os.environ.get("SUPABASE_URL")
+    service_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+    if not supabase_url or not service_key:
+        raise HTTPException(503, "Authentication is not configured on this server")
+    try:
+        r = requests.get(
+            f"{supabase_url}/auth/v1/user",
+            headers={"Authorization": f"Bearer {token}", "apikey": service_key},
+            timeout=10,
+        )
+    except requests.RequestException:
+        raise HTTPException(503, "Could not reach authentication service")
+    if not r.ok:
+        raise HTTPException(401, "Invalid or expired session")
+    user_id = (r.json() or {}).get("id")
+    if not user_id:
+        raise HTTPException(401, "Could not resolve authenticated user")
+    return user_id
+
+
+# ── Generic Supabase REST helpers for the new financial-literacy tables ─────────
+
+def _supabase_select(table: str, user_id: str, select: str = "*") -> list:
+    supabase_url = os.environ.get("SUPABASE_URL")
+    service_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+    if not supabase_url or not service_key:
+        return []
+    headers = {"apikey": service_key, "Authorization": f"Bearer {service_key}"}
+    r = requests.get(
+        f"{supabase_url}/rest/v1/{table}?user_id=eq.{user_id}&select={select}",
+        headers=headers, timeout=10,
+    )
+    return r.json() if r.ok else []
+
+
+def _supabase_upsert(table: str, row: dict) -> dict:
+    supabase_url = os.environ.get("SUPABASE_URL")
+    service_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+    if not supabase_url or not service_key:
+        raise HTTPException(503, "Persistence is not configured on this server")
+    headers = {
+        "apikey": service_key, "Authorization": f"Bearer {service_key}",
+        "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=representation",
+    }
+    r = requests.post(f"{supabase_url}/rest/v1/{table}?on_conflict=user_id", json=row, headers=headers, timeout=10)
+    if not r.ok:
+        raise HTTPException(502, f"Failed to save to {table}: {r.text[:200]}")
+    rows = r.json()
+    return rows[0] if rows else row
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # HEALTH
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -207,6 +337,12 @@ def health():
             "vqe": _HAS_VQE,
             "foresight": _HAS_FORESIGHT,
             "qtbn_core": _HAS_QTBN_CORE,
+            "quantum_features_enabled": QUANTUM_FEATURES_ENABLED,
+            "budgeting": _HAS_BUDGETING,
+            "retirement": _HAS_RETIREMENT,
+            "credit_behavior_sim": _HAS_CREDIT_BEHAVIOR_SIM,
+            "home_planning": _HAS_HOME_PLANNING,
+            "debt_management": _HAS_DEBT_MANAGEMENT,
         },
     }
 
@@ -2712,6 +2848,401 @@ def credit_risk_analyze(req: CreditRiskRequest):
         return _np_to_py(result)
     except Exception as e:
         raise HTTPException(500, f"Credit risk analysis error: {e}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# FINANCIAL LITERACY — BUDGETING / RETIREMENT / CREDIT BEHAVIOR SIMULATOR
+# Classical, authenticated, Supabase-persisted. Not gated by QUANTUM_FEATURES_ENABLED.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Budgeting ─────────────────────────────────────────────────────────────────
+
+class BudgetCategoryItem(BaseModel):
+    id: str
+    name: str
+    amount: float
+
+
+class BudgetCategory(BaseModel):
+    id: str
+    emoji: str
+    label: str
+    items: List[BudgetCategoryItem] = []
+
+
+class SaveBudgetRequest(BaseModel):
+    income: float
+    categories: List[BudgetCategory]
+
+
+@app.get("/api/budgeting/plan")
+def budgeting_get_plan(user_id: str = Depends(_get_authenticated_user_id)):
+    if not _HAS_BUDGETING:
+        raise HTTPException(503, "budgeting module not available")
+    try:
+        return _np_to_py(get_or_create_budget(user_id))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Budgeting error: {e}")
+
+
+@app.post("/api/budgeting/plan")
+def budgeting_save_plan(req: SaveBudgetRequest, user_id: str = Depends(_get_authenticated_user_id)):
+    if not _HAS_BUDGETING:
+        raise HTTPException(503, "budgeting module not available")
+    try:
+        categories = [c.dict() for c in req.categories]
+        return _np_to_py(save_budget(user_id, req.income, categories))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Budgeting error: {e}")
+
+
+# ── Retirement ────────────────────────────────────────────────────────────────
+
+class SaveRetirementPlanRequest(BaseModel):
+    plan_name: str = "My Plan"
+    current_age: int
+    retirement_age: int
+    current_savings: float
+    monthly_contribution: float
+    expected_return_rate: float
+    inflation_rate: float = 0.0
+    retirement_goal: str = ""
+    # Phase 4 — decumulation/withdrawal analysis fields
+    roth_pct: float = 0.0
+    life_expectancy: int = 90
+    withdrawal_rate_pct: float = 4.0
+
+
+@app.get("/api/retirement/plan")
+def retirement_get_plan(user_id: str = Depends(_get_authenticated_user_id)):
+    if not _HAS_RETIREMENT:
+        raise HTTPException(503, "retirement module not available")
+    try:
+        return _np_to_py(get_or_create_retirement_plan(user_id))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Retirement error: {e}")
+
+
+@app.post("/api/retirement/plan")
+def retirement_save_plan(req: SaveRetirementPlanRequest, user_id: str = Depends(_get_authenticated_user_id)):
+    if not _HAS_RETIREMENT:
+        raise HTTPException(503, "retirement module not available")
+    try:
+        return _np_to_py(save_retirement_plan(
+            user_id,
+            plan_name=req.plan_name,
+            current_age=req.current_age,
+            retirement_age=req.retirement_age,
+            current_savings=req.current_savings,
+            monthly_contribution=req.monthly_contribution,
+            expected_return_rate=req.expected_return_rate,
+            inflation_rate=req.inflation_rate,
+            retirement_goal=req.retirement_goal,
+            roth_pct=req.roth_pct,
+            life_expectancy=req.life_expectancy,
+            withdrawal_rate_pct=req.withdrawal_rate_pct,
+        ))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Retirement error: {e}")
+
+
+class RetirementRiskAnalysisRequest(BaseModel):
+    starting_balance: float
+    roth_pct: float = 0.0
+    withdrawal_rate_pct: float = 4.0
+    inflation_rate_pct: float = 2.5
+    horizon_years: int = 30
+    n_simulations: int = 500
+
+
+@app.post("/api/retirement/risk-analysis")
+def retirement_risk_analysis(req: RetirementRiskAnalysisRequest, user_id: str = Depends(_get_authenticated_user_id)):
+    if not _HAS_RETIREMENT:
+        raise HTTPException(503, "retirement module not available")
+    try:
+        return _np_to_py(run_retirement_risk_analysis(
+            starting_balance=req.starting_balance,
+            roth_pct=req.roth_pct,
+            withdrawal_rate_pct=req.withdrawal_rate_pct,
+            inflation_rate_pct=req.inflation_rate_pct,
+            horizon_years=req.horizon_years,
+            n_simulations=min(max(req.n_simulations, 50), 2000),
+        ))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Retirement risk analysis error: {e}")
+
+
+# ── Credit Behavior Simulator ────────────────────────────────────────────────
+
+class CreditSimMonth(BaseModel):
+    payment_behavior: str
+    utilization_pct: float
+    new_account_opened: bool = False
+
+
+class CreditSimRequest(BaseModel):
+    starting_fico: int
+    monthly_income: float
+    monthly_debt: float
+    months: List[CreditSimMonth]
+
+
+class SaveCreditSimProfileRequest(BaseModel):
+    starting_fico: int
+    monthly_income: float
+    monthly_debt: float
+    behavior_assumptions: dict
+    last_trajectory: Optional[dict] = None
+
+
+@app.post("/api/credit-sim/simulate")
+def credit_sim_simulate(req: CreditSimRequest, user_id: str = Depends(_get_authenticated_user_id)):
+    if not _HAS_CREDIT_BEHAVIOR_SIM:
+        raise HTTPException(503, "credit_behavior_sim module not available")
+    try:
+        payload = {
+            "starting_fico": req.starting_fico,
+            "monthly_income": req.monthly_income,
+            "monthly_debt": req.monthly_debt,
+            "months": [m.dict() for m in req.months],
+        }
+        return _np_to_py(run_credit_behavior_simulation(payload))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Credit behavior simulation error: {e}")
+
+
+@app.get("/api/credit-sim/profile")
+def credit_sim_get_profile(user_id: str = Depends(_get_authenticated_user_id)):
+    if not _HAS_CREDIT_BEHAVIOR_SIM:
+        raise HTTPException(503, "credit_behavior_sim module not available")
+    try:
+        return _np_to_py(get_or_create_credit_sim_profile(user_id))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Credit behavior simulation error: {e}")
+
+
+@app.post("/api/credit-sim/profile")
+def credit_sim_save_profile(req: SaveCreditSimProfileRequest, user_id: str = Depends(_get_authenticated_user_id)):
+    if not _HAS_CREDIT_BEHAVIOR_SIM:
+        raise HTTPException(503, "credit_behavior_sim module not available")
+    try:
+        return _np_to_py(save_credit_sim_profile(
+            user_id,
+            starting_fico=req.starting_fico,
+            monthly_income=req.monthly_income,
+            monthly_debt=req.monthly_debt,
+            behavior_assumptions=req.behavior_assumptions,
+            last_trajectory=req.last_trajectory,
+        ))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Credit behavior simulation error: {e}")
+
+
+# ── Home Planning ─────────────────────────────────────────────────────────────
+# Classical, authenticated, Supabase-persisted. Not gated by QUANTUM_FEATURES_ENABLED.
+
+class HomeBuyInputs(BaseModel):
+    purchase_price: float
+    down_payment_pct: float = 20.0
+    mortgage_rate_pct: float = 7.0
+    term_years: int = 30
+    property_tax_rate_pct: float = 1.1
+    annual_insurance: float = 1500.0
+    hoa_monthly: float = 0.0
+    closing_costs_pct: float = 3.0
+
+
+class ApartmentInputs(BaseModel):
+    monthly_rent: float
+    deposit_multiplier: float = 1.0
+    renters_insurance_monthly: float = 15.0
+
+
+class DormInputs(BaseModel):
+    cost_per_semester: float
+    semesters_per_year: float = 2.0
+    meal_plan_included: bool = True
+
+
+class MobileHomeInputs(BaseModel):
+    purchase_price: float
+    down_payment_pct: float = 10.0
+    loan_rate_pct: float = 9.0
+    term_years: int = 20
+    lot_rent_monthly: float = 0.0
+    annual_insurance: float = 800.0
+
+
+class HomePlanningOption(BaseModel):
+    type: str  # "home" | "apartment" | "dorm" | "mobile_home"
+    inputs: Dict[str, Any]
+
+
+class HomePlanningSimulateRequest(BaseModel):
+    option_a: Optional[HomePlanningOption] = None
+    option_b: Optional[HomePlanningOption] = None
+    utilities: Dict[str, float] = {}
+    horizon_years: int = 10
+    appreciation_rate_pct: float = 3.0
+    selling_cost_pct: float = 6.0
+
+
+class SaveHomePlanRequest(BaseModel):
+    option_a: Optional[HomePlanningOption] = None
+    option_b: Optional[HomePlanningOption] = None
+    utilities: Dict[str, float] = {}
+    comparison_settings: Dict[str, Any] = {}
+
+
+@app.get("/api/home-planning/defaults")
+def home_planning_defaults():
+    if not _HAS_HOME_PLANNING:
+        raise HTTPException(503, "home_planning module not available")
+    return {"utilities": HOME_PLANNING_DEFAULT_UTILITIES}
+
+
+@app.post("/api/home-planning/simulate")
+def home_planning_simulate(req: HomePlanningSimulateRequest, user_id: str = Depends(_get_authenticated_user_id)):
+    if not _HAS_HOME_PLANNING:
+        raise HTTPException(503, "home_planning module not available")
+    try:
+        payload = {
+            "option_a": req.option_a.dict() if req.option_a else None,
+            "option_b": req.option_b.dict() if req.option_b else None,
+            "utilities": req.utilities,
+            "horizon_years": req.horizon_years,
+            "appreciation_rate_pct": req.appreciation_rate_pct,
+            "selling_cost_pct": req.selling_cost_pct,
+        }
+        return _np_to_py(run_home_planning_simulation(payload))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Home planning simulation error: {e}")
+
+
+@app.get("/api/home-planning/plan")
+def home_planning_get_plan(user_id: str = Depends(_get_authenticated_user_id)):
+    if not _HAS_HOME_PLANNING:
+        raise HTTPException(503, "home_planning module not available")
+    try:
+        return _np_to_py(get_or_create_home_plan(user_id))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Home planning error: {e}")
+
+
+@app.post("/api/home-planning/plan")
+def home_planning_save_plan(req: SaveHomePlanRequest, user_id: str = Depends(_get_authenticated_user_id)):
+    if not _HAS_HOME_PLANNING:
+        raise HTTPException(503, "home_planning module not available")
+    try:
+        return _np_to_py(save_home_plan(
+            user_id,
+            option_a=req.option_a.dict() if req.option_a else None,
+            option_b=req.option_b.dict() if req.option_b else None,
+            utilities=req.utilities,
+            comparison_settings=req.comparison_settings,
+        ))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Home planning error: {e}")
+
+
+# ── Debt Management ───────────────────────────────────────────────────────────
+# Classical, authenticated, Supabase-persisted. Not gated by QUANTUM_FEATURES_ENABLED.
+
+class DebtEntry(BaseModel):
+    id: str
+    name: str
+    type: str  # "student_loan" | "credit_card" | "personal_loan" | "business_loan"
+    balance: float
+    apr_pct: float
+    minimum_payment: float
+
+
+class DebtPlanSimulateRequest(BaseModel):
+    debts: List[DebtEntry]
+    extra_monthly_payment: float = 0.0
+
+
+class SaveDebtPlanRequest(BaseModel):
+    debts: List[DebtEntry]
+    extra_monthly_payment: float = 0.0
+
+
+class MinimumPaymentHintRequest(BaseModel):
+    type: str
+    balance: float
+    apr_pct: float
+
+
+@app.post("/api/debt-management/minimum-payment-hint")
+def debt_management_minimum_payment_hint(req: MinimumPaymentHintRequest):
+    if not _HAS_DEBT_MANAGEMENT:
+        raise HTTPException(503, "debt_management module not available")
+    try:
+        return {"minimum_payment_hint": compute_minimum_payment_hint(req.type, req.balance, req.apr_pct)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Debt management error: {e}")
+
+
+@app.post("/api/debt-management/simulate")
+def debt_management_simulate(req: DebtPlanSimulateRequest, user_id: str = Depends(_get_authenticated_user_id)):
+    if not _HAS_DEBT_MANAGEMENT:
+        raise HTTPException(503, "debt_management module not available")
+    try:
+        debts = [d.dict() for d in req.debts]
+        return _np_to_py(compare_debt_strategies(debts, req.extra_monthly_payment))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Debt management simulation error: {e}")
+
+
+@app.get("/api/debt-management/plan")
+def debt_management_get_plan(user_id: str = Depends(_get_authenticated_user_id)):
+    if not _HAS_DEBT_MANAGEMENT:
+        raise HTTPException(503, "debt_management module not available")
+    try:
+        return _np_to_py(get_or_create_debt_plan(user_id))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Debt management error: {e}")
+
+
+@app.post("/api/debt-management/plan")
+def debt_management_save_plan(req: SaveDebtPlanRequest, user_id: str = Depends(_get_authenticated_user_id)):
+    if not _HAS_DEBT_MANAGEMENT:
+        raise HTTPException(503, "debt_management module not available")
+    try:
+        debts = [d.dict() for d in req.debts]
+        return _np_to_py(save_debt_plan(user_id, debts, req.extra_monthly_payment))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Debt management error: {e}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

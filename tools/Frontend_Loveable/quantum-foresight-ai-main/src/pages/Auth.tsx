@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Atom, Sparkles, Eye, EyeOff } from "lucide-react";
+import { Loader2, Sparkles, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
@@ -175,7 +175,7 @@ const Auth = () => {
         <div className="text-center space-y-4">
           <div className="flex items-center justify-center gap-4">
             <div className="relative">
-              <Atom className="w-12 h-12 text-primary animate-pulse" />
+              <img src="/apple-touch-icon.png" alt="Lachesis" className="w-12 h-12 object-contain animate-pulse" />
               <div className="absolute inset-0 w-12 h-12 border-2 border-primary/30 rounded-full animate-ping"></div>
             </div>
             <div>
@@ -185,7 +185,7 @@ const Auth = () => {
             </div>
           </div>
           <p className="text-muted-foreground">
-            Quantum-Enhanced Financial Analytics Platform
+            Your AI Financial Literacy Tutor
           </p>
         </div>
 
@@ -198,10 +198,10 @@ const Auth = () => {
               </div>
               <div className="space-y-2">
                 <p className="text-lg font-semibold text-foreground">
-                  Hi I'm Lachesis your A.I integrated Quantum analyst!
+                  Hi, I'm Lachesis — your AI financial literacy tutor!
                 </p>
                 <p className="text-muted-foreground">
-                  Let's predict your future now!
+                  Let's build your financial future together.
                 </p>
               </div>
             </div>
