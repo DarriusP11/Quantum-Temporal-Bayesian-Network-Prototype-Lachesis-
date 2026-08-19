@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppContext } from "@/contexts/AppContext";
+import { FEATURES } from "@/lib/features";
 import { ChevronDown, Save, RotateCcw, User, LogOut, HelpCircle, Atom, BarChart2 } from "lucide-react";
 
 const OWNER_EMAIL = "darriusperson@gmail.com";
@@ -20,7 +21,7 @@ const TAB_GUIDE = [
   { name: "Financial Analytics", section: "ai",      description: "Analyze your stock portfolio with real market data. Configure tickers, portfolio value, lookback period, and confidence level. View VaR/CVaR, Sharpe/Sortino ratios, return charts, a correlation matrix, and Persona Views." },
   { name: "Insider Trading",     section: "ai",      description: "Track stock purchases and sales made by company executives via SEC EDGAR filings. When insiders buy their own stock heavily, it's often a bullish signal." },
   { name: "Sentiment Analysis",  section: "ai",      description: "Measures the market's mood about your stocks by scanning financial news headlines using VADER sentiment scoring. Positive coverage = bullish; negative coverage = bearish." },
-  { name: "Credit Risk",         section: "ai",      description: "Pro — Quantum-powered credit risk analysis using Qiskit's Gaussian Conditional Independence model. Estimates portfolio Expected Loss, VaR, and CVaR via Iterative Quantum Amplitude Estimation or Monte Carlo simulation across borrower portfolios." },
+  { name: "Credit Risk",         section: "ai",      description: "Understand your credit risk profile before applying for a loan. Estimates Expected Loss, VaR, and CVaR via Monte Carlo simulation — no quantum computing required." },
   // Quantum / Qiskit
   { name: "Foresight",           section: "quantum", description: "Sweeps depolarizing and amplitude-damping noise parameters across a quantum circuit and measures KL-divergence from the ideal output — shows how sensitive your circuit is to hardware noise." },
   { name: "Circuit Inspector",   section: "quantum", description: "Main quantum circuit workbench with three sub-tabs: Statevector (configure qubits, gates, shots & visualize amplitude/phase), Measurement (compare ideal vs. noisy shot counts), and Noise (tune depolarizing, amplitude-damping, phase-damping, and CNOT error channels)." },
@@ -60,6 +61,7 @@ export function AppSidebar({ isOwner = false }: { isOwner?: boolean }) {
           >
             <BarChart2 className="w-3 h-3" />Classical
           </button>
+          {FEATURES.quantum && (
           <button
             onClick={() => setActiveSection('quantum')}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-md text-xs font-semibold transition-all ${
@@ -70,6 +72,7 @@ export function AppSidebar({ isOwner = false }: { isOwner?: boolean }) {
           >
             <Atom className="w-3 h-3" />Quantum
           </button>
+          )}
         </div>
         <p className="text-[10px] text-muted-foreground mt-1.5">
           {activeSection === 'quantum'

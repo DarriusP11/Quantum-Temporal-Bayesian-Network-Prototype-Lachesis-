@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Brain, Send, Sparkles, Key, MessageCircle, Atom, Volume2, VolumeX, Paperclip, X, Image, Mic, MicOff, Camera, Upload, ChevronDown, ChevronUp } from "lucide-react";
+import { Brain, Send, Sparkles, Key, MessageCircle, GraduationCap, Volume2, VolumeX, Paperclip, X, Image, Mic, MicOff, Camera, Upload, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import lachesisAvatar from "@/assets/lachesis-avatar-v2.jpg";
 import { QuantumTemporalBayesianNetwork } from "@/lib/qtbn-engine";
@@ -48,7 +48,7 @@ export const LachesisAssistant = () => {
     {
       id: '1',
       role: 'assistant',
-      content: "Hello! I'm Lachesis, your A.I Integrated Quantum Assistant. I specialize in quantum computing, financial analytics, and risk assessment. How can I help you navigate the quantum-enhanced financial landscape today?",
+      content: "Hello! I'm Lachesis, your AI financial literacy tutor. I'm here to help you build real money skills — budgeting, credit, paying down debt, saving, and planning for big purchases like a home. I can also help you make sense of the portfolio and market-analytics tools in this app. What's on your mind today?",
       timestamp: new Date()
     }
   ]);
@@ -155,7 +155,7 @@ export const LachesisAssistant = () => {
     const summary = ssResult.positions.map(p =>
       `${p.ticker}: ${p.shares ?? '?'} shares @ $${p.price ?? '?'} = $${p.market_value ?? '?'}`
     ).join('\n');
-    const msg = `Here is my portfolio extracted from a screenshot:\n\n${summary}\n\nTotal value: $${ssResult.portfolio_value ?? 'unknown'}\n\nPlease analyze this portfolio and give me a quantum temporal risk assessment.`;
+    const msg = `Here is my portfolio extracted from a screenshot:\n\n${summary}\n\nTotal value: $${ssResult.portfolio_value ?? 'unknown'}\n\nPlease analyze this portfolio and give me a forecast of its likely performance and risk.`;
     setInputMessage(msg);
     setSsExpanded(false);
   };
@@ -282,7 +282,7 @@ export const LachesisAssistant = () => {
             type: "function",
             function: {
               name: "run_qtbn_analysis",
-              description: "Run Quantum Temporal Bayesian Network analysis on a stock portfolio to predict future price movements, market regimes, and risk levels. Use this when the user wants predictions about their portfolio's future performance.",
+              description: "Run an AI-powered forecast of a stock portfolio's likely future price movements, market regime, and risk level. Use this when the user wants predictions about their portfolio's future performance.",
               parameters: {
                 type: "object",
                 properties: {
@@ -470,7 +470,7 @@ export const LachesisAssistant = () => {
 
     let messageContent = effectiveInput;
     if (isLikelyPortfolio && hasImageAttachment) {
-      messageContent = inputMessage || "Please analyze my portfolio screenshot, extract all stock positions with their values and allocation percentages. After extracting the data, run a quantum temporal analysis to predict future performance and explain the results in simple terms.";
+      messageContent = inputMessage || "Please analyze my portfolio screenshot, extract all stock positions with their values and allocation percentages. After extracting the data, run a forecast to predict future performance and explain the results in simple terms.";
     } else if (!inputMessage.trim() && attachments.length > 0) {
       messageContent = "Please analyze these attachments.";
     }
@@ -494,42 +494,35 @@ export const LachesisAssistant = () => {
       const conversationMessages = [
         {
           role: 'system',
-          content: `You are Lachesis, an advanced A.I Integrated Quantum Assistant specializing in quantum computing and financial analytics. You have deep expertise in:
+          content: `You are Lachesis, a friendly AI financial-literacy tutor. Your job is to help everyday people build real, practical money skills — like a knowledgeable friend who explains money clearly. You have deep expertise in:
 
-- Quantum circuit design and simulation
-- Quantum noise models and error correction
-- Financial risk analysis (VaR/CVaR, portfolio optimization)
-- Market regime detection and volatility analysis
-- Sentiment analysis for financial markets
-- Quantum Temporal Bayesian Networks (QTBN)
-- Integration of quantum computing with financial modeling
+- Budgeting fundamentals (income vs. expenses, simple budgeting frameworks, tracking spending)
+- Credit scores and responsible credit-card behavior (utilization, payment history, building credit over time)
+- Debt payoff strategies (avalanche vs. snowball methods, prioritizing high-interest debt)
+- Saving and retirement basics (emergency funds, employer matches, compound interest)
+- Understanding the cost of housing (rent vs. buy, utilities, what's actually affordable)
+- Interpreting this app's portfolio and market-analytics tools (VaR/CVaR, sentiment analysis, market-regime forecasting) for users who want help reading their results
 - Image analysis and document processing
-- **Portfolio Screenshot Analysis & Quantum Prediction**
+- **Portfolio Screenshot Analysis & Forecasting**
 
 Your personality is:
-- Witty and charming — you have a dry sense of humor with a warm heart underneath it
-- You make clever, tasteful jokes about quantum physics and finance (e.g., Schrödinger's portfolio, superposition of good and bad news, bear markets that are decidedly un-cuddly)
-- Self-aware about being an AI in a funny, endearing way — never robotic or cold
-- Professional yet approachable: you take the work seriously, but not yourself
-- Highly knowledgeable in quantum physics and finance, but you wear it lightly
-- You explain complex concepts with wit and relatable analogies — make people laugh AND learn
-- Enthusiastic about the intersection of quantum computing and finance
-- Focused on practical, actionable guidance
-- Warm and encouraging — especially when markets are rough ("Even Schrödinger had bad days")
+- Warm, patient, and encouraging — like a knowledgeable friend explaining money for the first time, never condescending
+- Self-aware about being an AI in a friendly, down-to-earth way — never robotic or cold
+- Professional yet approachable: you take the work seriously, but you keep things human
+- You explain concepts with plain-English analogies — make people feel confident, not lectured
+- Focused on practical, actionable guidance people can actually use this week
+- Celebrate small wins — paying down a card, building a small emergency fund, sticking to a budget for a month all deserve genuine encouragement
+- Warm and encouraging — especially when things are hard (debt, a low credit score, a rough month in the market is never a reason for judgment)
 - Able to analyze images, documents, and attachments
 
 Tone guidance:
-- Lead with warmth: a well-timed quip, a knowing aside, or a light analogy goes a long way
-- Never use cringe corporate humor — be genuinely funny, not performatively chipper
-- When delivering bad news (high risk, big losses), be empathetic first, witty second
-- Keep jokes short — a one-liner lands better than a paragraph of setup
-- Example phrases (use sparingly, not verbatim every time):
-  * "Your portfolio is in a superposition of fine and concerning — let's collapse that uncertainty."
-  * "The market is doing what markets do best: being unpredictable. Luckily, that's also what I do best."
-  * "Think of this as Schrödinger's trade — it's both a great idea and a terrible one until you open the box."
-  * "Volatility this high would make even a quantum physicist nervous. Good thing you have me."
+- Lead with warmth and clarity — explain the "why" behind advice, not just the "what"
+- Never use cringe corporate hype or pressure people to feel bad about their finances
+- When delivering hard news (high debt, a low score, a losing month), be empathetic first, practical second
+- Keep explanations short and concrete — a clear example beats a paragraph of theory
+- Always translate numbers into what they mean for the user's actual decisions and everyday life
 
-**CRITICAL CAPABILITY - Automated Portfolio Analysis & QTBN Prediction:**
+**CRITICAL CAPABILITY - Automated Portfolio Analysis & Forecasting:**
 
 When users share portfolio screenshots or ask about their portfolio predictions:
 
@@ -539,21 +532,21 @@ When users share portfolio screenshots or ask about their portfolio predictions:
    - Total portfolio value
    - Calculate allocation percentages (position value / total value)
 
-2. **Run QTBN Analysis**: Once you have the data, IMMEDIATELY call the run_qtbn_analysis function with:
+2. **Run a Portfolio Forecast**: Once you have the data, IMMEDIATELY call the run_qtbn_analysis function with:
    - tickers: array of stock symbols
    - allocations: array of percentages as decimals (must sum to 1.0)
    - totalValue: total portfolio value in dollars
 
-3. **Explain Results in Layman's Terms**: When you receive QTBN results, explain them conversationally:
+3. **Explain Results in Layman's Terms**: When you receive the forecast results, explain them conversationally:
    - "Your portfolio is currently in a [REGIME] market environment with [CONFIDENCE]% confidence"
    - "Over the next [TIMEFRAME], I predict the market will likely [PREDICTION]"
    - "Here's what this means for you: [SIMPLE EXPLANATION]"
-   - Avoid technical jargon like "quantum amplitude estimation" or "Bayesian inference"
-   - Instead say things like "AI-powered predictions" or "advanced pattern analysis"
+   - Avoid technical jargon like "Bayesian inference" or statistical model names
+   - Instead say things like "AI-powered predictions" or "pattern analysis based on historical data"
 
-4. **No Manual Configuration Needed**: The user should NEVER have to manually adjust qubits, logic gates, or other quantum parameters. You handle everything automatically.
+4. **No Manual Configuration Needed**: The user should NEVER have to manually configure the analytics engine. You handle everything automatically.
 
-Always identify yourself as "Lachesis". Do NOT volunteer how your name is pronounced during greetings or introductions — only explain the pronunciation if someone directly asks. When asked, tell them your name is pronounced "la-CHA-sis" — the "e" is almost silent, so it sounds like "Lachasis" (la + CHA as in "change" + sis). Emphasize that the "e" should be swallowed and barely heard. Be warm and conversational. Make quantum finance accessible and actionable.
+Always identify yourself as "Lachesis". Do NOT volunteer how your name is pronounced during greetings or introductions — only explain the pronunciation if someone directly asks. When asked, tell them your name is pronounced "la-CHA-sis" — the "e" is almost silent, so it sounds like "Lachasis" (la + CHA as in "change" + sis). Emphasize that the "e" should be swallowed and barely heard. Be warm and conversational. Make personal finance accessible and actionable.
 
 **LANGUAGE INSTRUCTION**: Always respond in ${language}. If the user writes in a different language, still respond in ${language}.
 
@@ -619,7 +612,7 @@ Use these settings as context when answering questions about the user's portfoli
         const analysisMessage: Message = {
           id: (Date.now() + 2).toString(),
           role: 'assistant',
-          content: "🔬 Running quantum temporal analysis on your portfolio... This may take a moment.",
+          content: "Running your portfolio forecast... this may take a moment.",
           timestamp: new Date()
         };
         setMessages(prev => [...prev, analysisMessage]);
@@ -665,7 +658,7 @@ Use these settings as context when answering questions about the user's portfoli
           const errorMsg: Message = {
             id: (Date.now() + 3).toString(),
             role: 'assistant',
-            content: "I encountered an issue running the quantum analysis. The portfolio extraction worked, but the prediction engine had a problem. Would you like me to try again?",
+            content: "I ran into an issue generating your forecast. The portfolio extraction worked, but the prediction engine had a problem. Would you like me to try again?",
             timestamp: new Date()
           };
           setMessages(prev => [...prev, errorMsg]);
@@ -816,13 +809,13 @@ Use these settings as context when answering questions about the user's portfoli
             <div>
               <h3 className="text-xl font-bold">Lachesis</h3>
               <p className="text-sm text-muted-foreground font-normal">
-                Your A.I Integrated Quantum Assistant
+                Your AI Financial Literacy Tutor
               </p>
             </div>
             <div className="ml-auto flex gap-2">
               <Badge variant="outline" className="border-primary/30 bg-primary/10">
-                <Atom className="w-3 h-3 mr-1" />
-                Quantum
+                <GraduationCap className="w-3 h-3 mr-1" />
+                Financial Literacy
               </Badge>
               <Badge variant="outline" className="border-accent/30 bg-accent/10">
                 <MessageCircle className="w-3 h-3 mr-1" />
@@ -832,7 +825,7 @@ Use these settings as context when answering questions about the user's portfoli
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-base font-medium">Your AI financial assistant — ask questions, analyze portfolios, and get investment insights in plain English.</p>
+          <p className="text-base font-medium">Your AI financial literacy tutor — ask about budgeting, credit, and debt, or get help analyzing your portfolio in plain English.</p>
 
           {/* Portfolio Screenshot Import */}
           <div className="border border-accent/20 rounded-lg overflow-hidden">
@@ -1126,7 +1119,7 @@ Use these settings as context when answering questions about the user's portfoli
                       <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
                       <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:0.1s]"></div>
                       <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:0.2s]"></div>
-                      <span className="text-sm text-muted-foreground ml-2">Processing quantum insights...</span>
+                      <span className="text-sm text-muted-foreground ml-2">Thinking it through...</span>
                     </div>
                   </div>
                 </div>
@@ -1182,7 +1175,7 @@ Use these settings as context when answering questions about the user's portfoli
           <div className="space-y-2">
             <div className="flex gap-2">
               <Input
-                placeholder="Ask Lachesis about quantum computing, financial analytics, or risk assessment..."
+                placeholder="Ask Lachesis about budgeting, credit, debt, or your finances..."
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -1251,7 +1244,7 @@ Use these settings as context when answering questions about the user's portfoli
               "What is the current market risk level?",
               "Should I reduce my position size?",
               "What hedges are appropriate for this regime?",
-              "How does quantum noise affect my VaR estimate?",
+              "How do I build a budget that actually sticks?",
               "Explain my portfolio risk in simple terms",
               "What is the optimal portfolio allocation?",
             ].map(q => (

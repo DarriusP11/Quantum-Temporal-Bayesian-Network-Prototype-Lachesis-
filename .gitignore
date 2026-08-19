@@ -39,3 +39,16 @@ __pycache__/
 # IDE
 .vscode/
 .idea/
+
+# Business/personal documents (not part of the app)
+*.docx
+~$*
+CONTRACTOR_TOUCHPOINT.md
+generate_tos.py
+
+# Ad-hoc uploaded images (not part of the app)
+1192EE3B-7C59-46CD-9120-4BA04BE644DA.PNG
+ABDA3C98-4DC4-4EA8-B13B-8441115692F8.ICO
+
+# Unused Next.js starter scaffold (accidental, not part of the app)
+tools/Frontend_Loveable/quantum-foresight-ai-main/lachesis_prototype3/

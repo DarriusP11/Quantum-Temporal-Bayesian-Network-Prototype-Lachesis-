@@ -3,6 +3,7 @@
  * Mirrors the Streamlit sidebar session-state keys.
  */
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { FEATURES } from "@/lib/features";
 
 // ── Language support ────────────────────────────────────────────────────────
 export interface LanguageOption { code: string; label: string; native: string; }
@@ -122,6 +123,12 @@ export interface ClassicalCreditRiskSnapshot {
   risk_level: 'Low' | 'Medium' | 'High';
   risk_summary: string;
   tips: string[];
+  // Optional — populated when a Credit Behavior Simulator run was included in the export.
+  simulated_starting_fico?: number;
+  simulated_ending_fico?: number;
+  simulated_months?: number;
+  simulation_tips?: string[];
+  simulation_disclaimer?: string;
 }
 
 // ── Credit risk snapshot (shared between Credit Risk tab and Lachesis AI) ─────
@@ -214,7 +221,11 @@ const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>(DEFAULT_STATE);
-  const [activeSection, setActiveSection] = useState<'quantum' | 'classical'>('classical');
+  const [activeSection, setActiveSectionRaw] = useState<'quantum' | 'classical'>('classical');
+  const setActiveSection = useCallback((section: 'quantum' | 'classical') => {
+    if (section === 'quantum' && !FEATURES.quantum) return;
+    setActiveSectionRaw(section);
+  }, []);
 
   const setNumQubits = useCallback((n: number) =>
     setState(s => ({ ...s, num_qubits: n })), []);

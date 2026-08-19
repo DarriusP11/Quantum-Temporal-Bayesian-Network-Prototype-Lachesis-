@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { Plus, Trash2, ChevronDown, ChevronUp, DollarSign, TrendingUp, AlertCircle } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronUp, DollarSign, TrendingUp, AlertCircle, CloudOff, RefreshCw } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { apiBudgetingGet, apiBudgetingSave, type BudgetCategory as ApiBudgetCategory } from "@/lib/api";
 
 interface BudgetItem {
   id: string;
@@ -47,7 +49,23 @@ function categoryTotal(cat: BudgetCategory): number {
   return cat.items.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
 }
 
+/** API categories use numeric amounts; the UI keeps amounts as editable strings. */
+function fromApiCategories(cats: ApiBudgetCategory[]): BudgetCategory[] {
+  return cats.map(c => ({
+    ...c,
+    items: c.items.map(i => ({ ...i, amount: String(i.amount) })),
+  }));
+}
+
+function toApiCategories(cats: BudgetCategory[]): ApiBudgetCategory[] {
+  return cats.map(c => ({
+    ...c,
+    items: c.items.map(i => ({ ...i, amount: parseFloat(i.amount) || 0 })),
+  }));
+}
+
 export function BudgetingDashboard() {
+  const { user } = useAuth();
   const [income, setIncome] = useState("");
   const [categories, setCategories] = useState<BudgetCategory[]>(DEFAULT_CATEGORIES);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -56,7 +74,13 @@ export function BudgetingDashboard() {
   const [addingCat, setAddingCat] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
 
-  // Persist to localStorage
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const didLoadRef = useRef(false);
+
+  // Load: seed instantly from localStorage, then reconcile with the backend
+  // (source of truth) once signed in.
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -66,13 +90,56 @@ export function BudgetingDashboard() {
         if (sc) setCategories(sc);
       }
     } catch {}
-  }, []);
 
+    if (!user) {
+      setLoading(false);
+      didLoadRef.current = true;
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const plan = await apiBudgetingGet();
+        if (cancelled) return;
+        setIncome(plan.income ? String(plan.income) : "");
+        setCategories(plan.categories?.length ? fromApiCategories(plan.categories) : DEFAULT_CATEGORIES);
+        setError(null);
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+          didLoadRef.current = true;
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  // Save: always cache locally; debounce a backend sync while signed in.
   useEffect(() => {
+    if (!didLoadRef.current) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ income, categories }));
     } catch {}
-  }, [income, categories]);
+    if (!user) return;
+
+    const t = setTimeout(async () => {
+      setSaving(true);
+      try {
+        await apiBudgetingSave({ income: parseFloat(income) || 0, categories: toApiCategories(categories) });
+        setError(null);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setSaving(false);
+      }
+    }, 800);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [income, categories, user?.id]);
 
   const totalSpend = categories.reduce((sum, c) => sum + categoryTotal(c), 0);
   const incomeNum = parseFloat(income) || 0;
@@ -133,11 +200,39 @@ export function BudgetingDashboard() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-foreground">Budget Planner</h2>
-        <p className="text-muted-foreground text-sm mt-1">Track your monthly spending, set goals, and stay on top of your finances.</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">Budget Planner</h2>
+          <p className="text-muted-foreground text-sm mt-1">Track your monthly spending, set goals, and stay on top of your finances.</p>
+        </div>
+        <div className="shrink-0">
+          {!user ? (
+            <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-400 flex items-center gap-1">
+              <CloudOff className="w-3 h-3" />Sign in to sync
+            </Badge>
+          ) : saving ? (
+            <Badge variant="outline" className="text-[10px] border-border/40 text-muted-foreground flex items-center gap-1">
+              <RefreshCw className="w-3 h-3 animate-spin" />Saving...
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-400">Synced</Badge>
+          )}
+        </div>
       </div>
 
+      {error && (
+        <Card className="border-red-500/30 bg-red-500/5">
+          <CardContent className="p-3 flex items-center gap-2 text-xs text-red-400">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            Couldn't sync with the server — your changes are still saved in this browser. ({error})
+          </CardContent>
+        </Card>
+      )}
+
+      {loading ? (
+        <Card><CardContent className="p-6 text-sm text-muted-foreground">Loading your budget...</CardContent></Card>
+      ) : (
+      <>
       {/* Income + Summary Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="border-emerald-500/30 bg-emerald-500/5">
@@ -177,7 +272,7 @@ export function BudgetingDashboard() {
       <div>
         <h3 className="text-sm font-semibold text-foreground mb-3">Categories — click to add items</h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {categories.map((cat, idx) => {
+          {categories.map((cat) => {
             const total = categoryTotal(cat);
             const isExpanded = expanded === cat.id;
             return (
@@ -331,7 +426,7 @@ export function BudgetingDashboard() {
             <CardHeader className="pb-2"><CardTitle className="text-sm">Monthly Summary</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-1.5">
-                {categories.filter(c => categoryTotal(c) > 0).map((cat, i) => (
+                {categories.filter(c => categoryTotal(c) > 0).map((cat) => (
                   <div key={cat.id} className="flex items-center justify-between text-xs">
                     <span className="flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS[categories.indexOf(cat) % CHART_COLORS.length] }} />
@@ -388,6 +483,8 @@ export function BudgetingDashboard() {
           </div>
         </CollapsibleContent>
       </Collapsible>
+      </>
+      )}
     </div>
   );
 }
