@@ -35,8 +35,6 @@ export const LachesisGuideDashboard = () => {
   const { isListening, isSpeaking, micSupported, ttsSupported, startListening, stopListening, speak, stopSpeaking } = useVoice(state.language ?? "English");
 
   const [question, setQuestion]   = useState("");
-  const [openaiKey, setOpenaiKey] = useState("");
-  const [showKey, setShowKey]     = useState(false);
   const [regime, setRegime]       = useState("Unknown");
   const [varUsd, setVarUsd]       = useState("");
   const [history, setHistory]     = useState<Array<{ q: string; a: string }>>([]);
@@ -57,7 +55,6 @@ export const LachesisGuideDashboard = () => {
         var_usd: varUsd ? parseFloat(varUsd) : null,
         cvar_usd: varUsd ? parseFloat(varUsd) * 1.5 : null,
         portfolio_value: fin.portfolio_value,
-        openai_api_key: openaiKey || null,
         language: state.language ?? "English",
       });
       setHistory(prev => [{ q: finalQ, a: res.narrative }, ...prev]);
@@ -86,11 +83,11 @@ export const LachesisGuideDashboard = () => {
         <CardContent className="space-y-4">
           <p className="text-base font-medium mb-1">A chat assistant that explains your risk results and answers portfolio questions.</p>
           <p className="text-sm text-muted-foreground">
-            Ask Lachesis anything about your portfolio risk. Provide an OpenAI key for GPT-4.1-mini powered answers,
-            or use the built-in rule-based guidance.
+            Ask Lachesis anything about your portfolio risk. Answers are AI-powered automatically,
+            with built-in rule-based guidance as a fallback.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Market Regime</Label>
               <select
@@ -107,16 +104,6 @@ export const LachesisGuideDashboard = () => {
               <Label className="text-xs">Est. VaR ($, optional)</Label>
               <Input value={varUsd} onChange={e => setVarUsd(e.target.value)}
                 placeholder="e.g. 5000" className="mt-1 h-8 text-xs" />
-            </div>
-            <div>
-              <Label className="text-xs">OpenAI API key (optional)</Label>
-              <Input
-                type={showKey ? "text" : "password"}
-                value={openaiKey}
-                onChange={e => setOpenaiKey(e.target.value)}
-                placeholder="sk-..."
-                className="mt-1 h-8 text-xs font-mono"
-              />
             </div>
           </div>
         </CardContent>

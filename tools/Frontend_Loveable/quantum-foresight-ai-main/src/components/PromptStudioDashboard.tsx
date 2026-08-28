@@ -26,7 +26,6 @@ export const PromptStudioDashboard = () => {
   const [selectedTpl, setSelectedTpl] = useState("risk_scenario");
   const [customPrompt, setCustomPrompt] = useState("");
   const [useCustom, setUseCustom]     = useState(false);
-  const [openaiKey, setOpenaiKey]     = useState("");
   const [maxTokens, setMaxTokens]     = useState(500);
   const [result, setResult]           = useState<GenerateResponse | null>(null);
   const [loading, setLoading]         = useState(false);
@@ -63,7 +62,6 @@ export const PromptStudioDashboard = () => {
         template: useCustom ? "custom" : selectedTpl,
         variables,
         custom_prompt: useCustom ? customPrompt : null,
-        openai_api_key: openaiKey || null,
         max_tokens: maxTokens,
         language: state.language ?? "English",
       });
@@ -100,7 +98,7 @@ export const PromptStudioDashboard = () => {
           <p className="text-base font-medium mb-1">Generates written financial analysis reports using AI templates and your simulation data.</p>
           <p className="text-sm text-muted-foreground">
             Generate AI-driven financial scenario narratives using pre-built templates.
-            Variables are auto-filled from sidebar controls. Add an OpenAI key for GPT-4.1-mini output.
+            Variables are auto-filled from sidebar controls. Powered by GPT-4.1-mini automatically.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -126,9 +124,6 @@ export const PromptStudioDashboard = () => {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs">OpenAI API key (optional)</Label>
-              <Input type="password" value={openaiKey} onChange={e => setOpenaiKey(e.target.value)}
-                placeholder="sk-..." className="h-9 text-xs font-mono" />
               <div className="space-y-1">
                 <div className="flex justify-between text-xs">
                   <Label>Max tokens</Label>

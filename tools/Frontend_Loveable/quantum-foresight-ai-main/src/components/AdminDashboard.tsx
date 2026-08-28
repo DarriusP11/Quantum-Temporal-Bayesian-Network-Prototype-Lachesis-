@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Activity, AlertCircle, CheckCircle, Eye, EyeOff, KeyRound, Power, PowerOff, Trash2 } from "lucide-react";
-import { post, get } from "@/lib/api";
+import { get, authPost, authGet } from "@/lib/api";
 
 interface KeySpec {
   service: string;
@@ -59,7 +59,7 @@ export const AdminDashboard = () => {
 
   const fetchGlobalStatus = async () => {
     try {
-      const data = await get<{ active: boolean; activated_at: string | null }>("/api/global-keys/status");
+      const data = await authGet<{ active: boolean; activated_at: string | null }>("/api/global-keys/status");
       setGlobalActive(data.active);
       setGlobalActivatedAt(data.activated_at);
     } catch {
@@ -77,7 +77,7 @@ export const AdminDashboard = () => {
     setGlobalLoading(true);
     setGlobalError(null);
     try {
-      const res = await post<{ success: boolean; activated_at: string }>("/api/global-keys/activate", {
+      const res = await authPost<{ success: boolean; activated_at: string }>("/api/global-keys/activate", {
         openai: openaiKey,
         elevenlabs: elevenlabsKey,
       });
@@ -93,7 +93,7 @@ export const AdminDashboard = () => {
     setGlobalLoading(true);
     setGlobalError(null);
     try {
-      await post("/api/global-keys/deactivate", {});
+      await authPost("/api/global-keys/deactivate", {});
       setGlobalActive(false);
       setGlobalActivatedAt(null);
     } catch (e: unknown) {
@@ -138,7 +138,7 @@ export const AdminDashboard = () => {
     if (!key?.trim()) return;
     setValidating(service);
     try {
-      const res = await post<{ service: string; valid: boolean; hint: string }>("/api/admin/validate-key", {
+      const res = await authPost<{ service: string; valid: boolean; hint: string }>("/api/admin/validate-key", {
         service, api_key: key,
       });
       setStatus(s => ({ ...s, [service]: res.valid ? "valid" : "invalid" }));

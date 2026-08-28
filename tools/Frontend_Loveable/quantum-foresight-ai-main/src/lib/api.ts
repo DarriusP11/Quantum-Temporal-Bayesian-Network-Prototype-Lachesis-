@@ -57,6 +57,24 @@ export interface HealthResponse {
 }
 export const apiHealth = () => get<HealthResponse>("/api/health");
 
+// ─── Lachesis AI chat + voice (server-side proxy — no client-supplied key) ────
+export interface LachesisChatResponse {
+  content: string;
+  toolCall?: { id: string; type: string; function: { name: string; arguments: string } } | null;
+}
+export const apiLachesisChat = (messages: Array<{ role: string; content: unknown }>) =>
+  post<LachesisChatResponse>("/api/lachesis/chat", { messages });
+
+export async function apiLachesisSpeak(text: string): Promise<Blob> {
+  const res = await fetch(`${BASE}/api/lachesis/speak`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) throw new Error(`Voice request failed: ${res.status}`);
+  return res.blob();
+}
+
 // ─── Web Search (SerpAPI) ─────────────────────────────────────────────────────
 export interface SearchResult {
   title: string;
@@ -554,9 +572,9 @@ export const apiPromptGenerate = (
     openai_api_key: openaiApiKey ?? null, max_tokens: maxTokens, language,
   });
 
-// ─── Admin key validation ─────────────────────────────────────────────────────
+// ─── Admin key validation (owner-only) ────────────────────────────────────────
 export const apiAdminValidateKey = (service: string, api_key: string) =>
-  post<{ service: string; valid: boolean; hint: string }>("/api/admin/validate-key", { service, api_key });
+  authPost<{ service: string; valid: boolean; hint: string }>("/api/admin/validate-key", { service, api_key });
 
 // ─── SEC EDGAR ────────────────────────────────────────────────────────────────
 export interface EdgarCIKResponse {

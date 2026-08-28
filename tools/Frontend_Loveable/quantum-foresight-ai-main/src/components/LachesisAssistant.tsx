@@ -5,17 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Brain, Send, Sparkles, Key, MessageCircle, GraduationCap, Volume2, VolumeX, Paperclip, X, Image, Mic, MicOff, Camera, Upload, ChevronDown, ChevronUp } from "lucide-react";
+import { Brain, Send, Sparkles, MessageCircle, GraduationCap, Volume2, VolumeX, Paperclip, X, Image, Mic, MicOff, Camera, Upload, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import lachesisAvatar from "@/assets/lachesis-avatar-v2.jpg";
 import { QuantumTemporalBayesianNetwork } from "@/lib/qtbn-engine";
 import { FinancialData } from "@/types/quantum";
 import { useAppContext } from "@/contexts/AppContext";
-import { useAuth } from "@/hooks/useAuth";
 import { useVoice } from "@/hooks/useVoice";
-import { apiWebSearch, post, get } from "@/lib/api";
+import { apiWebSearch, apiLachesisChat, apiLachesisSpeak, post } from "@/lib/api";
 
 interface Message {
   id: string;
@@ -34,11 +32,7 @@ interface Attachment {
   isImage: boolean;
 }
 
-const OWNER_EMAIL = "darriusperson@gmail.com";
-
 export const LachesisAssistant = () => {
-  const { user } = useAuth();
-  const isOwner = user?.email?.toLowerCase() === OWNER_EMAIL;
   const { state: appState, setCreditRiskSnapshot, setClassicalCreditRiskSnapshot } = useAppContext();
   const creditRiskSnapshot = appState.creditRiskSnapshot;
   const classicalCreditRiskSnapshot = appState.classicalCreditRiskSnapshot;
@@ -53,8 +47,6 @@ export const LachesisAssistant = () => {
     }
   ]);
   const [inputMessage, setInputMessage] = useState("");
-  const [apiKey, setApiKey] = useState("");
-  const [elevenLabsApiKey, setElevenLabsApiKey] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
@@ -83,29 +75,6 @@ export const LachesisAssistant = () => {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
   }, [messages]);
-
-  // Auto-load owner API keys from env vars — runs once after login
-  useEffect(() => {
-    if (!isOwner) return;
-    const ownerOpenAI     = import.meta.env.VITE_OWNER_OPENAI_KEY as string | undefined;
-    const ownerElevenLabs = import.meta.env.VITE_OWNER_ELEVENLABS_KEY as string | undefined;
-    if (ownerOpenAI)     setApiKey(ownerOpenAI);
-    if (ownerElevenLabs) setElevenLabsApiKey(ownerElevenLabs);
-  }, [isOwner]);
-
-  // For non-owners: check if global keys are active and load them
-  useEffect(() => {
-    if (isOwner) return;
-    (async () => {
-      try {
-        const status = await get<{ active: boolean }>("/api/global-keys/status");
-        if (!status.active) return;
-        const keys = await get<{ openai: string; elevenlabs: string }>("/api/global-keys/fetch");
-        if (keys.openai)     setApiKey(keys.openai);
-        if (keys.elevenlabs) setElevenLabsApiKey(keys.elevenlabs);
-      } catch { /* silently skip if backend unreachable */ }
-    })();
-  }, [isOwner]);
 
   const handleSsFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
@@ -161,44 +130,22 @@ export const LachesisAssistant = () => {
   };
 
   const speakText = async (text: string) => {
-    if (!voiceEnabled || !elevenLabsApiKey.trim()) return;
+    if (!voiceEnabled) return;
     // La (ladder) + cheh (leche) + sis (sister)
     text = text.replace(/Lachesis/gi, "LAchehsis");
 
     try {
       setIsSpeaking(true);
-      const voiceId = '7Xel906DyA79iUzguAaO';
-      const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-        method: 'POST',
-        headers: {
-          'Accept': 'audio/mpeg',
-          'Content-Type': 'application/json',
-          'xi-api-key': elevenLabsApiKey
-        },
-        body: JSON.stringify({
-          text: text,
-          model_id: 'eleven_multilingual_v2',
-          voice_settings: {
-            stability: 0.35,
-            similarity_boost: 0.75,
-            style: 0.45,
-            use_speaker_boost: true
-          }
-        })
-      });
+      const audioBlob = await apiLachesisSpeak(text);
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
 
-      if (response.ok) {
-        const audioBlob = await response.blob();
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const audio = new Audio(audioUrl);
-        
-        audio.onended = () => {
-          setIsSpeaking(false);
-          URL.revokeObjectURL(audioUrl);
-        };
-        
-        await audio.play();
-      }
+      audio.onended = () => {
+        setIsSpeaking(false);
+        URL.revokeObjectURL(audioUrl);
+      };
+
+      await audio.play();
     } catch (error) {
       console.error('Error with text-to-speech:', error);
       setIsSpeaking(false);
@@ -263,87 +210,10 @@ export const LachesisAssistant = () => {
   };
 
   const callOpenAIAPI = async (
-    conversationMessages: Array<{role: string; content: any}>, 
-    apiKey: string
+    conversationMessages: Array<{role: string; content: any}>
   ): Promise<{content: string; toolCall?: any}> => {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-5.4',
-        messages: conversationMessages,
-        temperature: 0.68,
-        max_completion_tokens: 2000,
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "run_qtbn_analysis",
-              description: "Run an AI-powered forecast of a stock portfolio's likely future price movements, market regime, and risk level. Use this when the user wants predictions about their portfolio's future performance.",
-              parameters: {
-                type: "object",
-                properties: {
-                  tickers: {
-                    type: "array",
-                    items: { type: "string" },
-                    description: "Array of stock ticker symbols (e.g., ['AAPL', 'GOOGL', 'TSLA'])"
-                  },
-                  allocations: {
-                    type: "array",
-                    items: { type: "number" },
-                    description: "Array of allocation percentages for each ticker (e.g., [0.40, 0.35, 0.25]). Must sum to 1.0"
-                  },
-                  totalValue: {
-                    type: "number",
-                    description: "Total portfolio value in dollars"
-                  }
-                },
-                required: ["tickers", "allocations", "totalValue"]
-              }
-            }
-          },
-          {
-            type: "function",
-            function: {
-              name: "search_google",
-              description: "Search Google for real-time information about stocks, markets, financial news, economic data, or any current events. Use this when the user asks about current prices, recent news, top stocks, market outlook, or any time-sensitive financial data.",
-              parameters: {
-                type: "object",
-                properties: {
-                  query: {
-                    type: "string",
-                    description: "The search query (e.g. 'top 10 stocks to buy March 2026', 'AAPL stock price today', 'S&P 500 best performers 2026')"
-                  }
-                },
-                required: ["query"]
-              }
-            }
-          }
-        ],
-        tool_choice: "auto"
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const message = data.choices[0]?.message;
-    
-    if (message?.tool_calls && message.tool_calls.length > 0) {
-      return {
-        content: message.content || "",
-        toolCall: message.tool_calls[0]
-      };
-    }
-    
-    return {
-      content: message?.content || "I apologize, but I couldn't process your request at the moment."
-    };
+    const { content, toolCall } = await apiLachesisChat(conversationMessages);
+    return { content: content || "I apologize, but I couldn't process your request at the moment.", toolCall };
   };
 
   const runQTBNAnalysis = async (tickers: string[], allocations: number[], totalValue: number) => {
@@ -414,47 +284,6 @@ export const LachesisAssistant = () => {
     const effectiveInput = pendingPromptRef.current ?? inputMessage;
     pendingPromptRef.current = null;
     if (!effectiveInput.trim() && attachments.length === 0) return;
-    
-    if (!apiKey.trim()) {
-      // Rule-based fallback via backend (no OpenAI key needed)
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        role: 'user',
-        content: effectiveInput,
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, userMessage]);
-      setInputMessage("");
-      setIsLoading(true);
-      try {
-        const res = await post<{ narrative: string }>("/api/financial/lachesis-guide", {
-          question: effectiveInput,
-          tickers: appState.finance.tickers.split(",").map((t: string) => t.trim()),
-          regime,
-          var_usd: varUsd ? parseFloat(varUsd) : null,
-          portfolio_value: appState.finance.portfolio_value,
-          language,
-        });
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: res?.narrative ?? "I'm sorry, I couldn't process that request.",
-          timestamp: new Date(),
-        };
-        setMessages(prev => [...prev, assistantMessage]);
-        if (voiceEnabled) await speakText(assistantMessage.content);
-      } catch {
-        setMessages(prev => [...prev, {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: "I'm unable to reach the backend right now. Please add an OpenAI API key for full functionality.",
-          timestamp: new Date(),
-        }]);
-      } finally {
-        setIsLoading(false);
-      }
-      return;
-    }
 
     // Check if user is uploading a portfolio screenshot
     const hasImageAttachment = attachments.some(a => a.isImage);
@@ -591,7 +420,7 @@ Use these settings as context when answering questions about the user's portfoli
         }
       ];
 
-      const { content, toolCall } = await callOpenAIAPI(conversationMessages, apiKey);
+      const { content, toolCall } = await callOpenAIAPI(conversationMessages);
 
       // Only show a pre-tool message if OpenAI actually provided one (not blank)
       if (content.trim()) {
@@ -639,7 +468,7 @@ Use these settings as context when answering questions about the user's portfoli
             }
           ];
 
-          const { content: finalResponse } = await callOpenAIAPI(resultsMessages, apiKey);
+          const { content: finalResponse } = await callOpenAIAPI(resultsMessages);
           
           const interpretationMessage: Message = {
             id: (Date.now() + 3).toString(),
@@ -697,7 +526,7 @@ Use these settings as context when answering questions about the user's portfoli
               { role: 'tool', tool_call_id: toolCall.id, content: searchSummary }
             ];
 
-            const { content: finalResponse } = await callOpenAIAPI(resultsMessages, apiKey);
+            const { content: finalResponse } = await callOpenAIAPI(resultsMessages);
             const finalMsg: Message = {
               id: (Date.now() + 3).toString(),
               role: 'assistant',
@@ -722,20 +551,20 @@ Use these settings as context when answering questions about the user's portfoli
         await speakText(content);
       }
     } catch (error) {
-      console.error('Error calling OpenAI API:', error);
-      
+      console.error('Error calling Lachesis chat:', error);
+
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I apologize, but I'm experiencing technical difficulties. Please check your OpenAI API key and try again. If the problem persists, there might be an issue with the OpenAI API service.",
+        content: "I apologize, but I'm experiencing technical difficulties right now. Please try again in a moment.",
         timestamp: new Date()
       };
 
       setMessages(prev => [...prev, errorMessage]);
-      
+
       toast({
         title: "Connection Error",
-        description: "Failed to connect to Lachesis. Please verify your API key.",
+        description: "Failed to connect to Lachesis. Please try again shortly.",
         variant: "destructive"
       });
     } finally {
@@ -752,46 +581,6 @@ Use these settings as context when answering questions about the user's portfoli
 
   return (
     <div className="space-y-6">
-      {/* API Key Configuration — owner only */}
-      {isOwner && <Alert className="border-amber-500/20 bg-amber-500/10">
-        <Key className="h-4 w-4" />
-        <AlertDescription className="space-y-3">
-          <div>
-            <strong>Connect to Supabase for seamless integration</strong> or enter your API keys below for temporary access.
-          </div>
-          <div className="space-y-2">
-            <div className="flex gap-2">
-              <Input
-                type="password"
-                placeholder="Enter your OpenAI API key..."
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                className="flex-1"
-              />
-              <Button variant="outline" size="sm" asChild>
-                <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">
-                  Get API Key
-                </a>
-              </Button>
-            </div>
-            <div className="flex gap-2">
-              <Input
-                type="password"
-                placeholder="Enter your ElevenLabs API key for voice..."
-                value={elevenLabsApiKey}
-                onChange={(e) => setElevenLabsApiKey(e.target.value)}
-                className="flex-1"
-              />
-              <Button variant="outline" size="sm" asChild>
-                <a href="https://elevenlabs.io/app/speech-synthesis/text-to-speech" target="_blank" rel="noopener noreferrer">
-                  Get Voice Key
-                </a>
-              </Button>
-            </div>
-          </div>
-        </AlertDescription>
-      </Alert>}
-
       {/* Chat Interface */}
       <Card className="border-accent/20 bg-gradient-to-br from-card to-primary/5">
         <CardHeader className="pb-4">
@@ -1223,7 +1012,7 @@ Use these settings as context when answering questions about the user's portfoli
                 variant="outline"
                 size="icon"
                 onClick={() => setVoiceEnabled(!voiceEnabled)}
-                disabled={!elevenLabsApiKey.trim() || isSpeaking}
+                disabled={isSpeaking}
                 className={voiceEnabled ? "bg-primary/10" : ""}
               >
                 {voiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}

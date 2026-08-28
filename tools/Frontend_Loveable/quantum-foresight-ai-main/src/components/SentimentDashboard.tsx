@@ -32,7 +32,6 @@ export const SentimentDashboard = () => {
   const [tickers, setTickers]           = useState("AAPL,MSFT,NVDA");
   const [keywords, setKeywords]         = useState("");
   const [maxItems, setMaxItems]         = useState(30);
-  const [pplxKey, setPplxKey]           = useState("");
   const [pplxModel, setPplxModel]       = useState("sonar");
   const [isLoading, setIsLoading]       = useState(false);
   const [result, setResult]             = useState<SentimentResponse | null>(null);
@@ -50,7 +49,6 @@ export const SentimentDashboard = () => {
         max_items: maxItems,
         provider,
         ...(provider === "perplexity" && {
-          perplexity_api_key: pplxKey,
           perplexity_model: pplxModel,
         }),
       });
@@ -118,7 +116,7 @@ export const SentimentDashboard = () => {
                 <Zap className="w-4 h-4 flex-shrink-0" />
                 <div className="text-left">
                   <p className="font-medium">Perplexity AI</p>
-                  <p className="text-xs opacity-70">Live web search · API key required</p>
+                  <p className="text-xs opacity-70">Live web search</p>
                 </div>
               </button>
             </div>
@@ -127,17 +125,6 @@ export const SentimentDashboard = () => {
           {/* Perplexity-only fields */}
           {provider === "perplexity" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 border border-primary/20 rounded-lg bg-primary/5">
-              <div>
-                <Label htmlFor="pplx-key" className="text-xs">Perplexity API Key <span className="text-red-400">*</span></Label>
-                <Input
-                  id="pplx-key"
-                  type="password"
-                  value={pplxKey}
-                  onChange={e => setPplxKey(e.target.value)}
-                  placeholder="pplx-..."
-                  className="mt-1 h-8 text-xs font-mono"
-                />
-              </div>
               <div>
                 <Label htmlFor="pplx-model" className="text-xs">Model</Label>
                 <Input

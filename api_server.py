@@ -28,7 +28,7 @@ import numpy as np
 import requests
 
 # ── FastAPI ──────────────────────────────────────────────────────────────────
-from fastapi import FastAPI, HTTPException, Header, Depends
+from fastapi import FastAPI, HTTPException, Header, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -266,7 +266,7 @@ def _log_return_frame(prices_df) -> "pd.DataFrame":
 # user_id and are out of scope here), every NEW financial-data route below must
 # resolve user_id from a verified bearer token — never from the request body.
 
-def _get_authenticated_user_id(authorization: str = Header(None)) -> str:
+def _verify_supabase_user(authorization: str = Header(None)) -> dict:
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(401, "Missing or invalid Authorization header")
     token = authorization.split(" ", 1)[1]
@@ -284,10 +284,24 @@ def _get_authenticated_user_id(authorization: str = Header(None)) -> str:
         raise HTTPException(503, "Could not reach authentication service")
     if not r.ok:
         raise HTTPException(401, "Invalid or expired session")
-    user_id = (r.json() or {}).get("id")
+    return r.json() or {}
+
+
+def _get_authenticated_user_id(user: dict = Depends(_verify_supabase_user)) -> str:
+    user_id = user.get("id")
     if not user_id:
         raise HTTPException(401, "Could not resolve authenticated user")
     return user_id
+
+
+_OWNER_EMAIL = "darriusperson@gmail.com"
+
+
+def _get_authenticated_owner(user: dict = Depends(_verify_supabase_user)) -> str:
+    email = (user.get("email") or "").lower()
+    if email != _OWNER_EMAIL:
+        raise HTTPException(403, "Owner access required")
+    return email
 
 
 # ── Generic Supabase REST helpers for the new financial-literacy tables ─────────
@@ -1573,7 +1587,7 @@ def sentiment_analyze(req: SentimentRequest):
 
         # ── Perplexity branch ─────────────────────────────────────────────────
         if req.provider == "perplexity":
-            token = (req.perplexity_api_key or "").strip()
+            token = (req.perplexity_api_key or os.environ.get("PERPLEXITY_API_KEY", "")).strip()
             if not token:
                 raise HTTPException(400, "perplexity_api_key is required when provider=perplexity")
             provider_label = f"Perplexity API ({req.perplexity_model})"
@@ -2009,6 +2023,122 @@ def financial_insider(req: InsiderRequest):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# LACHESIS AI CHAT — full tool-calling chat + voice, proxied server-side.
+# The server's own OPENAI_API_KEY / ELEVENLABS_API_KEY are used; no client ever
+# supplies or sees a key for this feature.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+LACHESIS_CHAT_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "run_qtbn_analysis",
+            "description": "Run an AI-powered forecast of a stock portfolio's likely future price movements, market regime, and risk level. Use this when the user wants predictions about their portfolio's future performance.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "tickers": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Array of stock ticker symbols (e.g., ['AAPL', 'GOOGL', 'TSLA'])",
+                    },
+                    "allocations": {
+                        "type": "array",
+                        "items": {"type": "number"},
+                        "description": "Array of allocation percentages for each ticker (e.g., [0.40, 0.35, 0.25]). Must sum to 1.0",
+                    },
+                    "totalValue": {
+                        "type": "number",
+                        "description": "Total portfolio value in dollars",
+                    },
+                },
+                "required": ["tickers", "allocations", "totalValue"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_google",
+            "description": "Search Google for real-time information about stocks, markets, financial news, economic data, or any current events. Use this when the user asks about current prices, recent news, top stocks, market outlook, or any time-sensitive financial data.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The search query (e.g. 'top 10 stocks to buy March 2026', 'AAPL stock price today', 'S&P 500 best performers 2026')",
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    },
+]
+
+
+class LachesisChatRequest(BaseModel):
+    messages: List[Dict[str, Any]]
+
+
+@app.post("/api/lachesis/chat")
+def lachesis_chat(req: LachesisChatRequest):
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise HTTPException(503, "Lachesis AI is not configured on this server (missing OPENAI_API_KEY).")
+    try:
+        import openai
+        client = openai.OpenAI(api_key=api_key)
+        resp = client.chat.completions.create(
+            model="gpt-5.4",
+            messages=req.messages,
+            temperature=0.68,
+            max_completion_tokens=2000,
+            tools=LACHESIS_CHAT_TOOLS,
+            tool_choice="auto",
+        )
+        message = resp.choices[0].message
+        tool_call = message.tool_calls[0].model_dump() if message.tool_calls else None
+        return {"content": message.content or "", "toolCall": tool_call}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(502, f"Lachesis chat error: {e}")
+
+
+class LachesisSpeakRequest(BaseModel):
+    text: str
+
+
+@app.post("/api/lachesis/speak")
+def lachesis_speak(req: LachesisSpeakRequest):
+    api_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
+    if not api_key:
+        raise HTTPException(503, "Voice is not configured on this server (missing ELEVENLABS_API_KEY).")
+    voice_id = "7Xel906DyA79iUzguAaO"
+    try:
+        r = requests.post(
+            f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
+            headers={"Accept": "audio/mpeg", "Content-Type": "application/json", "xi-api-key": api_key},
+            json={
+                "text": req.text,
+                "model_id": "eleven_multilingual_v2",
+                "voice_settings": {
+                    "stability": 0.35,
+                    "similarity_boost": 0.75,
+                    "style": 0.45,
+                    "use_speaker_boost": True,
+                },
+            },
+            timeout=30,
+        )
+    except requests.RequestException as e:
+        raise HTTPException(502, f"Voice request failed: {e}")
+    if not r.ok:
+        raise HTTPException(502, f"ElevenLabs error: {r.status_code}")
+    return Response(content=r.content, media_type="audio/mpeg")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # LACHESIS GUIDE – AI Narrative (OpenAI if key set, else rule-based)
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -2037,12 +2167,13 @@ def lachesis_guide(req: LachesisGuideRequest):
             context_parts.append(f"Portfolio value: ${req.portfolio_value:,.0f}")
         context = "; ".join(context_parts)
 
-        # Try OpenAI if key provided
+        # Try OpenAI — client-supplied key takes priority, else fall back to the server's own key
         narrative = None
-        if req.openai_api_key:
+        openai_key = (req.openai_api_key or os.environ.get("OPENAI_API_KEY", "")).strip()
+        if openai_key:
             try:
                 import openai
-                client = openai.OpenAI(api_key=req.openai_api_key)
+                client = openai.OpenAI(api_key=openai_key)
                 resp = client.chat.completions.create(
                     model="gpt-4.1-mini",
                     messages=[
@@ -2126,11 +2257,12 @@ def prompt_studio_generate(req: PromptStudioRequest):
 
         result_text = None
 
-        # Try OpenAI
-        if req.openai_api_key:
+        # Try OpenAI — client-supplied key takes priority, else fall back to the server's own key
+        openai_key = (req.openai_api_key or os.environ.get("OPENAI_API_KEY", "")).strip()
+        if openai_key:
             try:
                 import openai
-                client = openai.OpenAI(api_key=req.openai_api_key)
+                client = openai.OpenAI(api_key=openai_key)
                 resp = client.chat.completions.create(
                     model="gpt-4.1-mini",
                     messages=[
@@ -2198,7 +2330,7 @@ def fred_macro(body: dict):
 
 
 @app.post("/api/admin/validate-key")
-def admin_validate_key(req: AdminKeyValidateRequest):
+def admin_validate_key(req: AdminKeyValidateRequest, _owner: str = Depends(_get_authenticated_owner)):
     """Minimal validation — checks key format only (no external calls)."""
     key = req.api_key.strip()
     valid = False
@@ -3340,13 +3472,13 @@ class GlobalKeysActivateRequest(BaseModel):
 
 
 @app.get("/api/global-keys/status")
-def global_keys_status():
+def global_keys_status(_owner: str = Depends(_get_authenticated_owner)):
     cfg = _load_global_config()
     return {"active": cfg.get("global_keys_active", False), "activated_at": cfg.get("activated_at")}
 
 
 @app.post("/api/global-keys/activate")
-def global_keys_activate(req: GlobalKeysActivateRequest):
+def global_keys_activate(req: GlobalKeysActivateRequest, _owner: str = Depends(_get_authenticated_owner)):
     cfg = _load_global_config()
     cfg["global_keys_active"] = True
     cfg["openai"] = req.openai
@@ -3357,7 +3489,7 @@ def global_keys_activate(req: GlobalKeysActivateRequest):
 
 
 @app.post("/api/global-keys/deactivate")
-def global_keys_deactivate():
+def global_keys_deactivate(_owner: str = Depends(_get_authenticated_owner)):
     cfg = _load_global_config()
     cfg["global_keys_active"] = False
     cfg["activated_at"] = None
@@ -3366,7 +3498,7 @@ def global_keys_deactivate():
 
 
 @app.get("/api/global-keys/fetch")
-def global_keys_fetch():
+def global_keys_fetch(_owner: str = Depends(_get_authenticated_owner)):
     cfg = _load_global_config()
     if not cfg.get("global_keys_active"):
         raise HTTPException(403, "Global keys not active")
