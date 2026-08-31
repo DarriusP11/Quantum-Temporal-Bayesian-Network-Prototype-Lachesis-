@@ -2600,7 +2600,15 @@ except ImportError:
     _stripe = None
     _HAS_STRIPE = False
 
-_STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+# Test-mode and live-mode keys need their own matching webhook secret (each
+# Stripe webhook endpoint — test or live — signs with its own whsec_). Which
+# one applies is derived from STRIPE_SECRET_KEY's own sk_test_/sk_live_ prefix,
+# so switching modes there switches the webhook secret automatically too.
+_STRIPE_WEBHOOK_SECRET = (
+    os.environ.get("STRIPE_TEST_WEBHOOK_SECRET", "")
+    if _stripe and _stripe.api_key.startswith("sk_test_")
+    else os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+)
 _FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://lachesisprototype3.vercel.app")
 
 # Single-tier pricing — one price, one product. The frontend never needs to
@@ -2617,7 +2625,7 @@ def _get_profile(user_id: str) -> dict:
         return {}
     headers = {"apikey": service_key, "Authorization": f"Bearer {service_key}"}
     r = requests.get(
-        f"{supabase_url}/rest/v1/profiles?user_id=eq.{user_id}&select=stripe_customer_id,subscription_id,plan,subscription_status,current_period_end",
+        f"{supabase_url}/rest/v1/profiles?id=eq.{user_id}&select=stripe_customer_id,subscription_id,plan,subscription_status,current_period_end",
         headers=headers, timeout=10
     )
     rows = r.json() if r.ok else []
@@ -2635,7 +2643,7 @@ def _update_profile(user_id: str, fields: dict):
         "Prefer": "return=minimal",
     }
     requests.patch(
-        f"{supabase_url}/rest/v1/profiles?user_id=eq.{user_id}",
+        f"{supabase_url}/rest/v1/profiles?id=eq.{user_id}",
         json=fields, headers=headers, timeout=10
     )
 
@@ -2651,7 +2659,7 @@ def _find_user_row_by_customer(customer_id: str) -> Optional[dict]:
         return None
     headers = {"apikey": service_key, "Authorization": f"Bearer {service_key}"}
     r = requests.get(
-        f"{supabase_url}/rest/v1/profiles?stripe_customer_id=eq.{customer_id}&select=user_id,last_webhook_event_id",
+        f"{supabase_url}/rest/v1/profiles?stripe_customer_id=eq.{customer_id}&select=id,last_webhook_event_id",
         headers=headers, timeout=10
     )
     rows = r.json() if r.ok else []
@@ -2770,7 +2778,7 @@ async def billing_webhook(request: Request):
             plan       = _plan_from_price_id(price_id)
             import datetime
             period_end = datetime.datetime.utcfromtimestamp(obj["current_period_end"]).isoformat() + "Z"
-            _update_profile(row["user_id"], {
+            _update_profile(row["id"], {
                 "subscription_id":      sub_id,
                 "plan":                 plan,
                 "subscription_status":  status,
@@ -2782,7 +2790,7 @@ async def billing_webhook(request: Request):
         customer_id = obj["customer"]
         row = _find_user_row_by_customer(customer_id)
         if row and row.get("last_webhook_event_id") != event_id:
-            _update_profile(row["user_id"], {
+            _update_profile(row["id"], {
                 "plan":                 "free",
                 "subscription_status":  "canceled",
                 "subscription_id":      None,
@@ -2793,7 +2801,7 @@ async def billing_webhook(request: Request):
         customer_id = obj.get("customer")
         row = _find_user_row_by_customer(customer_id)
         if row and row.get("last_webhook_event_id") != event_id:
-            _update_profile(row["user_id"], {
+            _update_profile(row["id"], {
                 "subscription_status":  "past_due",
                 "last_webhook_event_id": event_id,
             })
