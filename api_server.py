@@ -2702,6 +2702,21 @@ def billing_create_setup_intent(req: CreateSetupIntentRequest, user_id: str = De
     return {"client_secret": intent.client_secret, "customer_id": customer_id}
 
 
+def _extract_period_end(sub) -> Optional[str]:
+    """current_period_end has been migrating from the top-level Subscription
+    object to each subscription item across Stripe API versions — try both."""
+    import datetime
+    try:
+        period_end_ts = getattr(sub, "current_period_end", None)
+        if period_end_ts is None and sub.get("items", {}).get("data"):
+            period_end_ts = sub["items"]["data"][0].get("current_period_end")
+        if period_end_ts:
+            return datetime.datetime.utcfromtimestamp(period_end_ts).isoformat() + "Z"
+    except Exception:
+        pass
+    return None
+
+
 @app.post("/api/billing/create-subscription")
 def billing_create_subscription(req: CreateSubscriptionRequest, user_id: str = Depends(_get_authenticated_user_id)):
     if not _HAS_STRIPE:
@@ -2733,21 +2748,7 @@ def billing_create_subscription(req: CreateSubscriptionRequest, user_id: str = D
         raise HTTPException(400, str(e))
 
     plan = "premium"
-    import datetime
-
-    # current_period_end has been migrating from the top-level Subscription
-    # object to each subscription item across Stripe API versions — try both,
-    # and never let a bookkeeping/display detail fail a request whose Stripe
-    # side has already succeeded.
-    period_end = None
-    try:
-        period_end_ts = getattr(sub, "current_period_end", None)
-        if period_end_ts is None and sub.get("items", {}).get("data"):
-            period_end_ts = sub["items"]["data"][0].get("current_period_end")
-        if period_end_ts:
-            period_end = datetime.datetime.utcfromtimestamp(period_end_ts).isoformat() + "Z"
-    except Exception:
-        pass
+    period_end = _extract_period_end(sub)
 
     try:
         _update_profile(user_id, {
@@ -2770,6 +2771,48 @@ def billing_create_subscription(req: CreateSubscriptionRequest, user_id: str = D
         "status":          sub.status,
         "plan":            plan,
         "client_secret":   client_secret,
+    }
+
+
+@app.post("/api/billing/confirm-subscription")
+def billing_confirm_subscription(user_id: str = Depends(_get_authenticated_user_id)):
+    """
+    Called by the client right after it confirms the subscription's initial
+    PaymentIntent with Stripe.js. create-subscription saves whatever status
+    Stripe returns synchronously (often "incomplete" until payment is
+    confirmed) — this re-fetches the subscription fresh from Stripe so the
+    very first activation doesn't have to wait on webhook delivery/config,
+    which stays responsible for later lifecycle events instead.
+    """
+    if not _HAS_STRIPE:
+        raise HTTPException(503, "Stripe not configured on server")
+
+    profile = _get_profile(user_id)
+    sub_id = profile.get("subscription_id")
+    if not sub_id:
+        raise HTTPException(400, "No subscription found — call create-subscription first")
+
+    try:
+        sub = _stripe.Subscription.retrieve(sub_id)
+    except _stripe.error.StripeError as e:
+        raise HTTPException(400, str(e))
+
+    period_end = _extract_period_end(sub)
+    plan = _plan_from_price_id(sub["items"]["data"][0]["price"]["id"]) if sub["items"]["data"] else "free"
+
+    try:
+        _update_profile(user_id, {
+            "plan":                plan,
+            "subscription_status": sub.status,
+            "current_period_end":  period_end,
+        })
+    except Exception:
+        pass
+
+    return {
+        "is_subscribed": plan == "premium" and sub.status in ("active", "trialing"),
+        "status":         sub.status,
+        "plan":           plan,
     }
 
 

@@ -1,7 +1,6 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
+import Auth from '@/pages/Auth';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -9,13 +8,6 @@ interface AuthGuardProps {
 
 const AuthGuard = ({ children }: AuthGuardProps) => {
   const { user, loading } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate('/auth');
-    }
-  }, [user, loading, navigate]);
 
   if (loading) {
     return (
@@ -35,7 +27,7 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
   }
 
   if (!user) {
-    return null;
+    return <Auth />;
   }
 
   return <>{children}</>;

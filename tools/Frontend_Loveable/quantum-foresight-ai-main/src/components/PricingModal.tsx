@@ -76,7 +76,34 @@ export function CheckoutForm({
         : setupIntent.payment_method?.id ?? "";
 
       // 3. Create the subscription — the server always uses its one configured price
-      await authPost("/api/billing/create-subscription", { payment_method_id: paymentMethodId });
+      const sub = await authPost<{
+        subscription_id: string;
+        status: string;
+        plan: string;
+        client_secret: string | null;
+      }>("/api/billing/create-subscription", { payment_method_id: paymentMethodId });
+
+      // 4. Stripe often can't activate the subscription synchronously — if it
+      // didn't, confirm the initial invoice's PaymentIntent here, then have
+      // the server re-sync the real status rather than assuming success.
+      if (sub.status !== "active" && sub.status !== "trialing") {
+        if (!sub.client_secret) {
+          throw new Error("Subscription requires payment confirmation, but no client secret was returned.");
+        }
+        const { error: paymentError, paymentIntent } = await stripe.confirmCardPayment(sub.client_secret);
+        if (paymentError) throw new Error(paymentError.message ?? "Payment confirmation failed");
+        if (paymentIntent?.status !== "succeeded") {
+          throw new Error(`Payment was not completed (status: ${paymentIntent?.status ?? "unknown"}).`);
+        }
+
+        const confirmed = await authPost<{ is_subscribed: boolean; status: string }>(
+          "/api/billing/confirm-subscription",
+          {}
+        );
+        if (!confirmed.is_subscribed) {
+          throw new Error(`Subscription isn't active yet (status: ${confirmed.status}). Please try again in a moment.`);
+        }
+      }
 
       toast({ title: "Subscription activated!", description: "You're all set — welcome to Lachesis." });
       onSuccess();
