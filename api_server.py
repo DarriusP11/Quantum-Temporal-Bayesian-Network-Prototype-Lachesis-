@@ -2742,7 +2742,7 @@ def billing_create_subscription(req: CreateSubscriptionRequest, user_id: str = D
             customer=customer_id,
             items=[{"price": _STRIPE_PRICE_ID}],
             payment_behavior="default_incomplete",
-            expand=["latest_invoice.payment_intent"],
+            expand=["latest_invoice.payment_intent", "latest_invoice.confirmation_secret"],
         )
     except _stripe.error.StripeError as e:
         raise HTTPException(400, str(e))
@@ -2760,11 +2760,19 @@ def billing_create_subscription(req: CreateSubscriptionRequest, user_id: str = D
     except Exception:
         pass
 
+    # Newer Stripe API versions moved the invoice's PaymentIntent client secret
+    # from latest_invoice.payment_intent to latest_invoice.confirmation_secret
+    # (part of Stripe's confirmation-based invoice payment flow) — try both.
     client_secret = None
     try:
-        client_secret = sub.latest_invoice.payment_intent.client_secret
+        client_secret = sub.latest_invoice.confirmation_secret.client_secret
     except Exception:
         pass
+    if not client_secret:
+        try:
+            client_secret = sub.latest_invoice.payment_intent.client_secret
+        except Exception:
+            pass
 
     return {
         "subscription_id": sub.id,
