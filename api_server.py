@@ -2687,15 +2687,18 @@ def billing_create_setup_intent(req: CreateSetupIntentRequest, user_id: str = De
     profile = _get_profile(user_id)
     customer_id = profile.get("stripe_customer_id")
 
-    if not customer_id:
-        customer = _stripe.Customer.create(email=req.email, metadata={"user_id": user_id})
-        customer_id = customer.id
-        _update_profile(user_id, {"stripe_customer_id": customer_id})
+    try:
+        if not customer_id:
+            customer = _stripe.Customer.create(email=req.email, metadata={"user_id": user_id})
+            customer_id = customer.id
+            _update_profile(user_id, {"stripe_customer_id": customer_id})
 
-    intent = _stripe.SetupIntent.create(
-        customer=customer_id,
-        payment_method_types=["card"],
-    )
+        intent = _stripe.SetupIntent.create(
+            customer=customer_id,
+            payment_method_types=["card"],
+        )
+    except _stripe.error.StripeError as e:
+        raise HTTPException(400, str(e))
     return {"client_secret": intent.client_secret, "customer_id": customer_id}
 
 
@@ -2711,20 +2714,23 @@ def billing_create_subscription(req: CreateSubscriptionRequest, user_id: str = D
     if not customer_id:
         raise HTTPException(400, "No Stripe customer found — call create-setup-intent first")
 
-    # Attach payment method and set as default
-    _stripe.PaymentMethod.attach(req.payment_method_id, customer=customer_id)
-    _stripe.Customer.modify(
-        customer_id,
-        invoice_settings={"default_payment_method": req.payment_method_id}
-    )
+    try:
+        # Attach payment method and set as default
+        _stripe.PaymentMethod.attach(req.payment_method_id, customer=customer_id)
+        _stripe.Customer.modify(
+            customer_id,
+            invoice_settings={"default_payment_method": req.payment_method_id}
+        )
 
-    # Create subscription — always against the server's one configured price
-    sub = _stripe.Subscription.create(
-        customer=customer_id,
-        items=[{"price": _STRIPE_PRICE_ID}],
-        payment_behavior="default_incomplete",
-        expand=["latest_invoice.payment_intent"],
-    )
+        # Create subscription — always against the server's one configured price
+        sub = _stripe.Subscription.create(
+            customer=customer_id,
+            items=[{"price": _STRIPE_PRICE_ID}],
+            payment_behavior="default_incomplete",
+            expand=["latest_invoice.payment_intent"],
+        )
+    except _stripe.error.StripeError as e:
+        raise HTTPException(400, str(e))
 
     plan = "premium"
     import datetime
@@ -2833,7 +2839,10 @@ def billing_cancel_subscription(user_id: str = Depends(_get_authenticated_user_i
     if not sub_id:
         raise HTTPException(400, "No active subscription found")
 
-    sub = _stripe.Subscription.modify(sub_id, cancel_at_period_end=True)
+    try:
+        sub = _stripe.Subscription.modify(sub_id, cancel_at_period_end=True)
+    except _stripe.error.StripeError as e:
+        raise HTTPException(400, str(e))
     import datetime
     period_end = datetime.datetime.utcfromtimestamp(sub.current_period_end).isoformat() + "Z"
     return {"canceled_at_period_end": True, "period_end": period_end}
@@ -2849,10 +2858,13 @@ def billing_portal_session(user_id: str = Depends(_get_authenticated_user_id)):
     if not customer_id:
         raise HTTPException(400, "No Stripe customer found")
 
-    session = _stripe.billing_portal.Session.create(
-        customer=customer_id,
-        return_url=_FRONTEND_URL,
-    )
+    try:
+        session = _stripe.billing_portal.Session.create(
+            customer=customer_id,
+            return_url=_FRONTEND_URL,
+        )
+    except _stripe.error.StripeError as e:
+        raise HTTPException(400, str(e))
     return {"url": session.url}
 
 
