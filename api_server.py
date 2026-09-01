@@ -2734,14 +2734,30 @@ def billing_create_subscription(req: CreateSubscriptionRequest, user_id: str = D
 
     plan = "premium"
     import datetime
-    period_end = datetime.datetime.utcfromtimestamp(sub.current_period_end).isoformat() + "Z"
 
-    _update_profile(user_id, {
-        "subscription_id":     sub.id,
-        "plan":                plan,
-        "subscription_status": sub.status,
-        "current_period_end":  period_end,
-    })
+    # current_period_end has been migrating from the top-level Subscription
+    # object to each subscription item across Stripe API versions — try both,
+    # and never let a bookkeeping/display detail fail a request whose Stripe
+    # side has already succeeded.
+    period_end = None
+    try:
+        period_end_ts = getattr(sub, "current_period_end", None)
+        if period_end_ts is None and sub.get("items", {}).get("data"):
+            period_end_ts = sub["items"]["data"][0].get("current_period_end")
+        if period_end_ts:
+            period_end = datetime.datetime.utcfromtimestamp(period_end_ts).isoformat() + "Z"
+    except Exception:
+        pass
+
+    try:
+        _update_profile(user_id, {
+            "subscription_id":     sub.id,
+            "plan":                plan,
+            "subscription_status": sub.status,
+            "current_period_end":  period_end,
+        })
+    except Exception:
+        pass
 
     client_secret = None
     try:
