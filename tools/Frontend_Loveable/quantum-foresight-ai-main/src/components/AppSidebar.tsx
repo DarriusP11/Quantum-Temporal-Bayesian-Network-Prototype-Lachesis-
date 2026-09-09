@@ -9,8 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppContext } from "@/contexts/AppContext";
-import { FEATURES } from "@/lib/features";
-import { ChevronDown, Save, RotateCcw, User, LogOut, HelpCircle, Atom, BarChart2 } from "lucide-react";
+import { ChevronDown, Save, RotateCcw, User, LogOut, HelpCircle } from "lucide-react";
 
 const OWNER_EMAIL = "darriusperson@gmail.com";
 
@@ -38,7 +37,7 @@ const TAB_GUIDE = [
 // ═══════════════════════════════════════════════════════════════════════════════
 export function AppSidebar({ isOwner = false }: { isOwner?: boolean }) {
   const { user, signOut } = useAuth();
-  const { state, setNumQubits, resetToDefaults, activeSection, setActiveSection } = useAppContext();
+  const { state, setNumQubits, resetToDefaults } = useAppContext();
 
   const [openGuide, setOpenGuide] = useState(false);
 
@@ -47,40 +46,6 @@ export function AppSidebar({ isOwner = false }: { isOwner?: boolean }) {
 
   return (
     <div className="flex flex-col h-full overflow-y-auto bg-card/60 backdrop-blur border-r border-accent/20 w-72 shrink-0">
-      {/* ── Section Toggle ───────────────────────────────────────────────── */}
-      <div className="p-4 border-b border-accent/20">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Section</p>
-        <div className="flex gap-1 p-1 bg-muted/40 rounded-lg border border-accent/10">
-          <button
-            onClick={() => setActiveSection('classical')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-md text-xs font-semibold transition-all ${
-              activeSection === 'classical'
-                ? 'bg-emerald-600 text-white shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <BarChart2 className="w-3 h-3" />Classical
-          </button>
-          {FEATURES.quantum && (
-          <button
-            onClick={() => setActiveSection('quantum')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-md text-xs font-semibold transition-all ${
-              activeSection === 'quantum'
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Atom className="w-3 h-3" />Quantum
-          </button>
-          )}
-        </div>
-        <p className="text-[10px] text-muted-foreground mt-1.5">
-          {activeSection === 'quantum'
-            ? 'Advanced quantum simulation & analytics'
-            : 'Budgeting, retirement & credit tools'}
-        </p>
-      </div>
-
       {/* ── Account ──────────────────────────────────────────────────────── */}
       <div className="p-4 border-b border-accent/20">
         <div className="flex items-center gap-3">
@@ -110,20 +75,10 @@ export function AppSidebar({ isOwner = false }: { isOwner?: boolean }) {
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="mt-2 max-h-80 overflow-y-auto space-y-3 pr-1 pb-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">AI / Classical</p>
             {TAB_GUIDE.filter(t => t.section === "ai").map(tab => (
               <div key={tab.name} className="space-y-0.5">
                 <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                   <span className="text-primary text-[8px]">●</span>{tab.name}
-                </p>
-                <p className="text-[11px] text-muted-foreground leading-relaxed pl-3">{tab.description}</p>
-              </div>
-            ))}
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground pt-1">Quantum / Qiskit</p>
-            {TAB_GUIDE.filter(t => t.section === "quantum").map(tab => (
-              <div key={tab.name} className="space-y-0.5">
-                <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                  <span className="text-accent text-[8px]">●</span>{tab.name}
                 </p>
                 <p className="text-[11px] text-muted-foreground leading-relaxed pl-3">{tab.description}</p>
               </div>
