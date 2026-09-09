@@ -1050,11 +1050,11 @@ Use these settings as context when answering questions about the user's portfoli
           {/* Quick Actions */}
           <div className="flex flex-wrap gap-2">
             {[
-              "What is the current market risk level?",
-              "Should I reduce my position size?",
-              "What hedges are appropriate for this regime?",
               "How do I build a budget that actually sticks?",
-              "Explain my portfolio risk in simple terms",
+              "What's the fastest way to pay off my debt?",
+              "How can I improve my credit score?",
+              "How much should I keep in an emergency fund?",
+              "Is it better to rent or buy right now?",
               "What is the optimal portfolio allocation?",
             ].map(q => (
               <Button
