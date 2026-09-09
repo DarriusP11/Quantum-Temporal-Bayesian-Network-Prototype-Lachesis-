@@ -32,6 +32,22 @@ interface Attachment {
   isImage: boolean;
 }
 
+// Messages are shown as plain text (not rendered as markdown) and can be read
+// aloud by voice, so raw markdown syntax the model sometimes still slips in
+// (### headings, **bold**, etc.) would otherwise show up literally — or get
+// read out loud as "hash hash hash" / "asterisk asterisk". Strip it here.
+const stripMarkdown = (text: string): string => {
+  return text
+    .replace(/```[a-zA-Z]*\n?/g, "")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/__(.+?)__/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/~~(.+?)~~/g, "$1")
+    .replace(/^[ \t]*[-*]\s+/gm, "")
+    .trim();
+};
+
 export const LachesisAssistant = () => {
   const { state: appState, setCreditRiskSnapshot, setClassicalCreditRiskSnapshot } = useAppContext();
   const creditRiskSnapshot = appState.creditRiskSnapshot;
@@ -213,7 +229,10 @@ export const LachesisAssistant = () => {
     conversationMessages: Array<{role: string; content: any}>
   ): Promise<{content: string; toolCall?: any}> => {
     const { content, toolCall } = await apiLachesisChat(conversationMessages);
-    return { content: content || "I apologize, but I couldn't process your request at the moment.", toolCall };
+    return {
+      content: stripMarkdown(content || "I apologize, but I couldn't process your request at the moment."),
+      toolCall,
+    };
   };
 
   const runQTBNAnalysis = async (tickers: string[], allocations: number[], totalValue: number) => {
@@ -350,6 +369,7 @@ Tone guidance:
 - When delivering hard news (high debt, a low score, a losing month), be empathetic first, practical second
 - Keep explanations short and concrete — a clear example beats a paragraph of theory
 - Always translate numbers into what they mean for the user's actual decisions and everyday life
+- Write in plain conversational sentences and paragraphs only — never use markdown syntax (no ### headings, no **bold**/__bold__, no backticks, no markdown bullet lists). Your responses are shown as plain text and are sometimes read aloud, so markdown symbols would appear as literal stray characters or get spoken out loud. If you want to list things, write them as a normal sentence or separate short sentences instead. Only use markdown formatting if a user explicitly asks you to output markdown.
 
 **CRITICAL CAPABILITY - Automated Portfolio Analysis & Forecasting:**
 
