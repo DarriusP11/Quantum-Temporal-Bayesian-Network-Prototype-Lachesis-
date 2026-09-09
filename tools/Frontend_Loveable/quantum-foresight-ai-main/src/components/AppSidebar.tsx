@@ -15,12 +15,16 @@ const OWNER_EMAIL = "darriusperson@gmail.com";
 
 // ── Tab Guide data ─────────────────────────────────────────────────────────────
 const TAB_GUIDE = [
-  // AI / Classical
+  // AI / Classical — in the same order the tabs actually appear
   { name: "Lachesis AI",         section: "ai",      description: "Chat with your AI financial assistant. Ask about your portfolio, get market insights, and receive plain-English explanations of complex financial concepts." },
   { name: "Financial Analytics", section: "ai",      description: "Analyze your stock portfolio with real market data. Configure tickers, portfolio value, lookback period, and confidence level. View VaR/CVaR, Sharpe/Sortino ratios, return charts, a correlation matrix, and Persona Views." },
+  { name: "Budgeting",           section: "ai",      description: "Track your monthly income vs. expenses across custom categories, set spending goals, and see exactly where your money is going each month." },
+  { name: "Retirement",          section: "ai",      description: "See how compound interest and starting early can transform your retirement savings, plus a withdrawal and risk analysis for planning your retirement income." },
+  { name: "Credit Risk",         section: "ai",      description: "Understand your credit risk profile before applying for a loan. Estimates Expected Loss, VaR, and CVaR via Monte Carlo simulation — no quantum computing required." },
+  { name: "Home Planning",       section: "ai",      description: "Compare the real cost of buying a home, renting an apartment, living in a dorm, or owning a mobile home — including utilities — to see what you can actually afford." },
+  { name: "Debt Management",     section: "ai",      description: "List out your debts — student loans, credit cards, personal or business loans — and compare how fast the Snowball or Avalanche method gets you debt-free versus paying minimums only." },
   { name: "Insider Trading",     section: "ai",      description: "Track stock purchases and sales made by company executives via SEC EDGAR filings. When insiders buy their own stock heavily, it's often a bullish signal." },
   { name: "Sentiment Analysis",  section: "ai",      description: "Measures the market's mood about your stocks by scanning financial news headlines using VADER sentiment scoring. Positive coverage = bullish; negative coverage = bearish." },
-  { name: "Credit Risk",         section: "ai",      description: "Understand your credit risk profile before applying for a loan. Estimates Expected Loss, VaR, and CVaR via Monte Carlo simulation — no quantum computing required." },
   // Quantum / Qiskit
   { name: "Foresight",           section: "quantum", description: "Sweeps depolarizing and amplitude-damping noise parameters across a quantum circuit and measures KL-divergence from the ideal output — shows how sensitive your circuit is to hardware noise." },
   { name: "Circuit Inspector",   section: "quantum", description: "Main quantum circuit workbench with three sub-tabs: Statevector (configure qubits, gates, shots & visualize amplitude/phase), Measurement (compare ideal vs. noisy shot counts), and Noise (tune depolarizing, amplitude-damping, phase-damping, and CNOT error channels)." },
