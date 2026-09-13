@@ -507,17 +507,6 @@ export const FinancialDashboard = () => {
                 />
                 <Label htmlFor="show-position">Position ($ = shares × price)</Label>
               </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="use-qae"
-                  checked={useQAE}
-                  onCheckedChange={(checked) => setUseQAE(!!checked)}
-                />
-                <Label htmlFor="use-qae" className="text-xs">
-                  Quantum Amplitude Estimation (QAE)
-                  <span className="text-muted-foreground ml-1">— requires qiskit-finance</span>
-                </Label>
-              </div>
             </div>
             <div>
               <Label htmlFor="sent-mult" className="text-xs">
