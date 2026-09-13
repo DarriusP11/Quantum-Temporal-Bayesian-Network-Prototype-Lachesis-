@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -217,11 +218,11 @@ export const InsiderTradingDashboard = () => {
             </div>
             <div>
               <Label htmlFor="edgar-max" className="text-xs">Max Results</Label>
-              <Input
+              <NumberInput
                 id="edgar-max"
-                type="number"
                 value={maxResults}
-                onChange={e => setMaxResults(parseInt(e.target.value) || 50)}
+                onChange={setMaxResults}
+                fallback={50}
                 min={1} max={200}
                 className="mt-1 h-8 text-xs w-24"
               />
@@ -348,14 +349,16 @@ export const InsiderTradingDashboard = () => {
             </div>
             <div>
               <Label className="text-xs">Portfolio Value ($)</Label>
-              <Input type="number" step={10000} value={fin.portfolio_value}
-                onChange={e => setFinance({ ...fin, portfolio_value: parseFloat(e.target.value) || 100000 })}
+              <NumberInput step={10000} value={fin.portfolio_value}
+                onChange={v => setFinance({ ...fin, portfolio_value: v })}
+                fallback={100000}
                 className="mt-1 h-8 text-xs" />
             </div>
             <div>
               <Label className="text-xs">Lookback (days)</Label>
-              <Input type="number" step={30} value={fin.lookback_days}
-                onChange={e => setFinance({ ...fin, lookback_days: parseInt(e.target.value) || 252 })}
+              <NumberInput step={30} value={fin.lookback_days}
+                onChange={v => setFinance({ ...fin, lookback_days: v })}
+                fallback={252}
                 className="mt-1 h-8 text-xs" />
             </div>
             <div className="flex items-end pb-1">

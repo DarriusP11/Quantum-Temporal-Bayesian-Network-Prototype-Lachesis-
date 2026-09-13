@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
@@ -224,20 +225,20 @@ export function DebtManagementDashboard() {
                   </div>
                   <div className="space-y-1">
                     <Label className="text-[10px] text-muted-foreground">Balance ($)</Label>
-                    <Input type="number" min={0} value={debt.balance}
-                      onChange={e => updateDebt(debt.id, { balance: Math.max(0, parseFloat(e.target.value) || 0) })}
+                    <NumberInput min={0} value={debt.balance}
+                      onChange={v => updateDebt(debt.id, { balance: v })}
                       className="h-8 text-xs" />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-[10px] text-muted-foreground">APR (%)</Label>
-                    <Input type="number" min={0} step={0.1} value={debt.apr_pct}
-                      onChange={e => updateDebt(debt.id, { apr_pct: Math.max(0, parseFloat(e.target.value) || 0) })}
+                    <NumberInput min={0} step={0.1} value={debt.apr_pct}
+                      onChange={v => updateDebt(debt.id, { apr_pct: v })}
                       className="h-8 text-xs" />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-[10px] text-muted-foreground">Min. Payment ($)</Label>
-                    <Input type="number" min={0} value={debt.minimum_payment}
-                      onChange={e => updateDebt(debt.id, { minimum_payment: Math.max(0, parseFloat(e.target.value) || 0) })}
+                    <NumberInput min={0} value={debt.minimum_payment}
+                      onChange={v => updateDebt(debt.id, { minimum_payment: v })}
                       className="h-8 text-xs" />
                   </div>
                   <div className="space-y-1 flex flex-col justify-end">

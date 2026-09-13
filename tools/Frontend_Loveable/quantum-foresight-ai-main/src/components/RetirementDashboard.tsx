@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
@@ -306,11 +306,10 @@ export function RetirementDashboard() {
             <Label className="text-xs font-medium">Current Savings ($)</Label>
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground text-xs">$</span>
-              <Input
-                type="number"
+              <NumberInput
                 min={0}
                 value={currentSavings}
-                onChange={e => setCurrentSavings(Math.max(0, parseFloat(e.target.value) || 0))}
+                onChange={setCurrentSavings}
                 className="h-8 text-sm"
               />
             </div>
@@ -320,11 +319,10 @@ export function RetirementDashboard() {
             <Label className="text-xs font-medium">Monthly Contribution ($)</Label>
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground text-xs">$</span>
-              <Input
-                type="number"
+              <NumberInput
                 min={0}
                 value={monthlyContrib}
-                onChange={e => setMonthlyContrib(Math.max(0, parseFloat(e.target.value) || 0))}
+                onChange={setMonthlyContrib}
                 className="h-8 text-sm"
               />
             </div>

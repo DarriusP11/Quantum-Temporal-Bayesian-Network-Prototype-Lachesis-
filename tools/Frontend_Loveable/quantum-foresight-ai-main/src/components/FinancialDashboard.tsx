@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -434,13 +435,13 @@ export const FinancialDashboard = () => {
             </div>
             <div>
               <Label htmlFor="lookback">Lookback Days</Label>
-              <Input
+              <NumberInput
                 id="lookback"
-                type="number"
                 value={lookbackDays}
-                onChange={(e) => setLookbackDays(parseInt(e.target.value) || 365)}
-                min="60"
-                max="2000"
+                onChange={setLookbackDays}
+                fallback={365}
+                min={60}
+                max={2000}
               />
             </div>
           </div>
@@ -448,13 +449,12 @@ export const FinancialDashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="portfolio-value">{portfolioValueLabel}</Label>
-              <Input
+              <NumberInput
                 id="portfolio-value"
-                type="number"
                 step={perShare ? 1 : 10000}
                 value={portfolioValue}
-                onChange={(e) => setPortfolioValue(parseFloat(e.target.value) || 0)}
-                min="0"
+                onChange={setPortfolioValue}
+                min={0}
               />
             </div>
           </div>
@@ -471,12 +471,12 @@ export const FinancialDashboard = () => {
             </div>
             <div>
               <Label htmlFor="sims">Monte Carlo Simulations</Label>
-              <Input
+              <NumberInput
                 id="sims"
-                type="number"
                 value={simulations}
-                onChange={(e) => setSimulations(parseInt(e.target.value) || 50000)}
-                min="1000" max="200000" step="1000"
+                onChange={setSimulations}
+                fallback={50000}
+                min={1000} max={200000} step={1000}
               />
             </div>
           </div>

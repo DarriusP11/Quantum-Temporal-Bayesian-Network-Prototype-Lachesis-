@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
@@ -174,7 +174,7 @@ function Field({ label, value, onChange, step = 1 }: { label: string; value: num
   return (
     <div className="space-y-1.5">
       <Label className="text-xs font-medium">{label}</Label>
-      <Input type="number" step={step} value={value} onChange={e => onChange(parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+      <NumberInput step={step} min={0} value={value} onChange={onChange} className="h-8 text-sm" />
     </div>
   );
 }
@@ -316,10 +316,10 @@ export function HomePlanningDashboard() {
                 <Label className="text-xs font-medium">{def.label}</Label>
                 <div className="flex items-center gap-1">
                   <span className="text-muted-foreground text-xs">$</span>
-                  <Input
-                    type="number" min={0}
+                  <NumberInput
+                    min={0}
                     value={utilities[key] ?? def.default_monthly}
-                    onChange={e => setUtilities(prev => ({ ...prev, [key]: parseFloat(e.target.value) || 0 }))}
+                    onChange={v => setUtilities(prev => ({ ...prev, [key]: v }))}
                     className="h-8 text-sm"
                   />
                 </div>

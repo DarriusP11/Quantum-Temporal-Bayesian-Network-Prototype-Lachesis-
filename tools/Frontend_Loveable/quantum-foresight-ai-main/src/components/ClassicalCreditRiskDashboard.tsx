@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
@@ -311,14 +311,14 @@ export function ClassicalCreditRiskDashboard() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Gross Monthly Income ($)</Label>
-                  <Input type="number" min={0} value={monthlyIncome}
-                    onChange={e => setMonthlyIncome(Math.max(0, parseFloat(e.target.value) || 0))}
+                  <NumberInput min={0} value={monthlyIncome}
+                    onChange={setMonthlyIncome}
                     className="h-8 text-sm" />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Existing Monthly Debt ($)</Label>
-                  <Input type="number" min={0} value={monthlyDebt}
-                    onChange={e => setMonthlyDebt(Math.max(0, parseFloat(e.target.value) || 0))}
+                  <NumberInput min={0} value={monthlyDebt}
+                    onChange={setMonthlyDebt}
                     className="h-8 text-sm" />
                 </div>
               </div>
@@ -532,8 +532,8 @@ export function ClassicalCreditRiskDashboard() {
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
                         <Label className="text-xs font-medium">Loan Amount ($)</Label>
-                        <Input type="number" min={0} value={loanAmount}
-                          onChange={e => setLoanAmount(Math.max(0, parseFloat(e.target.value) || 0))}
+                        <NumberInput min={0} value={loanAmount}
+                          onChange={setLoanAmount}
                           className="h-8 text-sm" />
                       </div>
                       <div className="space-y-2">

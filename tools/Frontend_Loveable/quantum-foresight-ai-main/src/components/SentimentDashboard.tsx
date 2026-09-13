@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { apiSentimentAnalyze, SentimentResponse, SentimentItem } from "@/lib/api";
@@ -161,11 +162,11 @@ export const SentimentDashboard = () => {
             </div>
             <div>
               <Label htmlFor="sent-max">Max Headlines</Label>
-              <Input
+              <NumberInput
                 id="sent-max"
-                type="number"
                 value={maxItems}
-                onChange={e => setMaxItems(parseInt(e.target.value) || 30)}
+                onChange={setMaxItems}
+                fallback={30}
                 min={5} max={200}
               />
             </div>
