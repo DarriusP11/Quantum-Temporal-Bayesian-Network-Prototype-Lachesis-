@@ -414,7 +414,9 @@ export function BudgetingDashboard() {
                   </Pie>
                   <Tooltip
                     formatter={(value: number) => [`$${value.toFixed(2)}`, "Monthly"]}
-                    contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "11px" }}
+                    contentStyle={{ backgroundColor: "#dbeafe", border: "1px solid #93c5fd", borderRadius: "8px", fontSize: "11px" }}
+                    itemStyle={{ color: "#1e3a8a" }}
+                    labelStyle={{ color: "#1e3a8a" }}
                   />
                   <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: "11px" }} />
                 </PieChart>
