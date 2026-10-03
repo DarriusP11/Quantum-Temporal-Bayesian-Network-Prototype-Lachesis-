@@ -78,7 +78,7 @@ const CLASSICAL_TABS = [
   { value: "classical-credit", label: "Credit Risk",         icon: ShieldCheck },
   { value: "home-planning",    label: "Home Planning",       icon: Home },
   { value: "debt-management",  label: "Debt Management",     icon: CreditCard },
-  { value: "insider",          label: "Insider Trading",     icon: Briefcase },
+  { value: "insider",          label: "SEC Filings",         icon: Briefcase },
   { value: "sentiment",        label: "Sentiment Analysis",  icon: Newspaper },
 ] as const;
 

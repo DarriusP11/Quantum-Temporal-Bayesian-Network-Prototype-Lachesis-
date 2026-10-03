@@ -24,7 +24,7 @@ const FEATURES = [
   "Credit Behavior Simulator",
   "Home Planning cost simulator",
   "Financial Analytics (Monte Carlo)",
-  "Insider Trading + SEC EDGAR",
+  "SEC Filings",
   "Sentiment Analysis",
 ];
 

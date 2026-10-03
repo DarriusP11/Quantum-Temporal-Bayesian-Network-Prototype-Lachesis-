@@ -23,7 +23,7 @@ const TAB_GUIDE = [
   { name: "Credit Risk",         section: "ai",      description: "Understand your credit risk profile before applying for a loan. Estimates Expected Loss, VaR, and CVaR via Monte Carlo simulation — no quantum computing required." },
   { name: "Home Planning",       section: "ai",      description: "Compare the real cost of buying a home, renting an apartment, living in a dorm, or owning a mobile home — including utilities — to see what you can actually afford." },
   { name: "Debt Management",     section: "ai",      description: "List out your debts — student loans, credit cards, personal or business loans — and compare how fast the Snowball or Avalanche method gets you debt-free versus paying minimums only." },
-  { name: "Insider Trading",     section: "ai",      description: "Track stock purchases and sales made by company executives via SEC EDGAR filings. When insiders buy their own stock heavily, it's often a bullish signal." },
+  { name: "SEC Filings",         section: "ai",      description: "Track stock purchases and sales made by company executives via SEC EDGAR filings. When insiders buy their own stock heavily, it's often a bullish signal." },
   { name: "Sentiment Analysis",  section: "ai",      description: "Measures the market's mood about your stocks by scanning financial news headlines using VADER sentiment scoring. Positive coverage = bullish; negative coverage = bearish." },
   // Quantum / Qiskit
   { name: "Foresight",           section: "quantum", description: "Sweeps depolarizing and amplitude-damping noise parameters across a quantum circuit and measures KL-divergence from the ideal output — shows how sensitive your circuit is to hardware noise." },
