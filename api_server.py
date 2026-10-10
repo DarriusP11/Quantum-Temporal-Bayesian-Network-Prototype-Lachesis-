@@ -2695,7 +2695,7 @@ def billing_create_setup_intent(req: CreateSetupIntentRequest, user_id: str = De
 
         intent = _stripe.SetupIntent.create(
             customer=customer_id,
-            payment_method_types=["card"],
+            automatic_payment_methods={"enabled": True},
         )
     except _stripe.error.StripeError as e:
         raise HTTPException(400, str(e))
